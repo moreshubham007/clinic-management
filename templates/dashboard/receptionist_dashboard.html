@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Receptionist Dashboard - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Receptionist Dashboard</h2>
+
+    <!-- Quick Actions -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary me-2">
+                <i class="fas fa-plus"></i> New Appointment
+            </a>
+            <button class="btn btn-secondary" onclick="window.location.reload()">
+                <i class="fas fa-sync"></i> Refresh Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Doctor Status Cards -->
+    <div class="row mb-4">
+        {% for doctor in doctors %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Dr. {{ doctor.user.name }}</h5>
+                    <p class="card-text">
+                        <strong>Specialization:</strong> {{ doctor.specialization }}<br>
+                        <strong>Today's Appointments:</strong> 
+                        {% set count = today_appointments|selectattr('doctor_id', 'equalto', doctor.id)|list|length %}
+                        <span class="badge bg-{% if count > 0 %}primary{% else %}secondary{% endif %}">
+                            {{ count }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Today's Appointments -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Today's Appointments</h5>
+        </div>
+        <div class="card-body">
+            {% if today_appointments %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in today_appointments %}
+                        <tr>
+                            <td>{{ appointment.datetime.strftime('%H:%M') }}</td>
+                            <td>{{ appointment.patient.name }}</td>
+                            <td>Dr. {{ appointment.doctor.user.name }}</td>
+                            <td>
+                                <span class="badge bg-{{ {
+                                    'scheduled': 'primary',
+                                    'completed': 'success',
+                                    'cancelled': 'danger'
+                                }[appointment.status] }}">
+                                    {{ appointment.status|title }}
+                                </span>
+                            </td>
+                            <td>{{ appointment.notes or '-' }}</td>
+                            <td>
+                                {% if appointment.status == 'scheduled' %}
+                                <button class="btn btn-sm btn-success" onclick="markCompleted({{ appointment.id }})">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="cancelAppointment({{ appointment.id }})">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No appointments scheduled for today.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Appointment Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="updateStatusForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                    <input type="hidden" id="status" name="status" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function markCompleted(appointmentId) {
+    if (confirm('Mark this appointment as completed?')) {
+        fetch(`/appointments/${appointmentId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+}
+
+function cancelAppointment(appointmentId) {
+    if (confirm('Are you sure you want to cancel this appointment?')) {
+        fetch(`/appointments/${appointmentId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

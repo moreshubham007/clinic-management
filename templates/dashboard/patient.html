@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Patient Dashboard</h2>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-md-8">
+            <!-- Upcoming Appointments -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Upcoming Appointments</h5>
+                    <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Book Appointment
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.datetime.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ appointment.datetime.strftime('%H:%M') }}</td>
+                                        <td>{{ appointment.doctor.user.name }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ {
+                                                'scheduled': 'warning',
+                                                'completed': 'success',
+                                                'cancelled': 'danger'
+                                            }[appointment.status] }}">
+                                                {{ appointment.status.capitalize() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{{ url_for('appointments.update_appointment', id=appointment.id) }}"
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if appointment.status == 'scheduled' %}
+                                                <button type="button" class="btn btn-sm btn-danger"
+                                                        onclick="cancelAppointment({{ appointment.id }})">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No upcoming appointments.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Cases -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Cases</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_cases %}
+                        <div class="accordion" id="casesAccordion">
+                            {% for case in recent_cases %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#case{{ case.id }}">
+                                        <div class="d-flex w-100 justify-content-between align-items-center">
+                                            <span>
+                                                <i class="fas fa-file-medical"></i>
+                                                Case by Dr. {{ case.doctor.user.name }}
+                                            </span>
+                                            <small class="text-muted ms-2">
+                                                {{ case.created_at.strftime('%Y-%m-%d') }}
+                                            </small>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="case{{ case.id }}" class="accordion-collapse collapse"
+                                     data-bs-parent="#casesAccordion">
+                                    <div class="accordion-body">
+                                        <h6>Diagnosis:</h6>
+                                        <p>{{ case.diagnosis }}</p>
+                                        <h6>Treatment:</h6>
+                                        <p>{{ case.treatment }}</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <span class="badge bg-{{ {
+                                                'active': 'success',
+                                                'closed': 'secondary',
+                                                'transferred': 'info'
+                                            }[case.status] }}">
+                                                {{ case.status.capitalize() }}
+                                            </span>
+                                            {% if not case.feedback_given %}
+                                            <a href="{{ url_for('patient.give_feedback', doctor_id=case.doctor_id) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-star"></i> Give Feedback
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No case history available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="col-md-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
+                            <i class="fas fa-calendar-plus"></i> Book Appointment
+                        </a>
+                        <a href="{{ url_for('patient.ask_question') }}" class="btn btn-info">
+                            <i class="fas fa-question-circle"></i> Ask Question
+                        </a>
+                        <a href="{{ url_for('patient.my_questions') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-comments"></i> View My Questions
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Questions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Questions</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_questions %}
+                        <div class="list-group list-group-flush">
+                            {% for question in recent_questions %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">To: Dr. {{ question.doctor.user.name }}</h6>
+                                    <small>{{ question.created_at.strftime('%Y-%m-%d') }}</small>
+                                </div>
+                                <p class="mb-1">{{ question.question }}</p>
+                                {% if question.answer %}
+                                <div class="mt-2 p-2 bg-light rounded">
+                                    <small class="text-muted">Answer:</small>
+                                    <p class="mb-0">{{ question.answer }}</p>
+                                </div>
+                                {% else %}
+                                <small class="text-warning">
+                                    <i class="fas fa-clock"></i> Awaiting response
+                                </small>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No recent questions.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Appointment Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to cancel this appointment?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep It</button>
+                <form id="cancelForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="status" value="cancelled">
+                    <button type="submit" class="btn btn-danger">Yes, Cancel It</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cancelAppointment(appointmentId) {
+    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    const form = document.getElementById('cancelForm');
+    form.action = "{{ url_for('appointments.update_appointment', id=0) }}".replace('0', appointmentId);
+    modal.show();
+}
+</script>
+{% endblock %} 

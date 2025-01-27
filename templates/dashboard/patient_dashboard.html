@@ -1,0 +1,2 @@
+<a href="{{ url_for('cases.view_case', case_id=case.id) }}" class="btn btn-sm btn-primary">View Details</a>
+<form method="POST" action="{{ url_for('cases.submit_feedback', case_id=case.id) }}" class="feedback-form"> 

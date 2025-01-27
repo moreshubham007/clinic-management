@@ -1,0 +1,12 @@
+$env:FLASK_APP = "app.py"
+FLASK_APP=app.py
+FLASK_ENV=development
+SECRET_KEY=your-super-secret-key-change-this
+DATABASE_URL=mysql://hospital:hospital123@localhost/clinic_db
+GOOGLE_CLIENT_ID=360432114135-j0p6m9sen72abfvc67l42c3095uheked.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-specific-password 

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}My Questions - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Questions</h2>
+        <a href="{{ url_for('patient.ask_question') }}" class="btn btn-primary">
+            <i class="fas fa-question-circle"></i> Ask New Question
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Questions List -->
+            <div class="card">
+                <div class="card-body">
+                    {% if questions %}
+                        <div class="accordion" id="questionsAccordion">
+                            {% for question in questions %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button {{ 'collapsed' if not loop.first }}" 
+                                            type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#question{{ question.id }}">
+                                        <div class="d-flex w-100 justify-content-between align-items-center">
+                                            <div>
+                                                <span class="me-3">To: Dr. {{ question.doctor.user.name }}</span>
+                                                <span class="badge bg-{{ 'success' if question.answer else 'warning' }}">
+                                                    {{ 'Answered' if question.answer else 'Pending' }}
+                                                </span>
+                                            </div>
+                                            <small class="text-muted ms-3">
+                                                {{ question.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            </small>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="question{{ question.id }}" 
+                                     class="accordion-collapse collapse {{ 'show' if loop.first }}"
+                                     data-bs-parent="#questionsAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Your Question:</label>
+                                            <div class="p-3 bg-light rounded">
+                                                {{ question.question }}
+                                            </div>
+                                        </div>
+
+                                        {% if question.answer %}
+                                        <div class="mb-3">
+                                            <label class="form-label">Doctor's Answer:</label>
+                                            <div class="p-3 bg-light rounded">
+                                                {{ question.answer }}
+                                                <div class="mt-2">
+                                                    <small class="text-muted">
+                                                        Answered on {{ question.answered_at.strftime('%Y-%m-%d %H:%M') }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Follow-up Actions -->
+                                        <div class="d-flex justify-content-end">
+                                            <button type="button" class="btn btn-outline-primary btn-sm me-2"
+                                                    onclick="askFollowUp({{ question.doctor.id }}, {{ question.id }})">
+                                                <i class="fas fa-reply"></i> Ask Follow-up
+                                            </button>
+                                            {% if not question.feedback_given %}
+                                            <a href="{{ url_for('patient.give_feedback', doctor_id=question.doctor.id) }}"
+                                               class="btn btn-outline-success btn-sm">
+                                                <i class="fas fa-star"></i> Give Feedback
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                        {% else %}
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-clock"></i> Waiting for doctor's response...
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-question-circle fa-3x text-muted mb-3"></i>
+                            <h5>No Questions Yet</h5>
+                            <p class="text-muted">
+                                You haven't asked any questions yet. Feel free to ask your doctor any questions you may have.
+                            </p>
+                            <a href="{{ url_for('patient.ask_question') }}" class="btn btn-primary">
+                                Ask Your First Question
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Follow-up Question Modal -->
+<div class="modal fade" id="followUpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ask Follow-up Question</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="followUpForm" method="POST" action="{{ url_for('patient.ask_question') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="doctor_id" id="followUpDoctorId">
+                    <div class="mb-3">
+                        <label for="followUpQuestion" class="form-label">Your Follow-up Question</label>
+                        <textarea class="form-control" id="followUpQuestion" name="question" 
+                                  rows="4" required></textarea>
+                        <div class="form-text">
+                            Reference Question #<span id="originalQuestionId"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Question</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function askFollowUp(doctorId, originalQuestionId) {
+    const modal = new bootstrap.Modal(document.getElementById('followUpModal'));
+    document.getElementById('followUpDoctorId').value = doctorId;
+    document.getElementById('originalQuestionId').textContent = originalQuestionId;
+    modal.show();
+}
+</script>
+{% endblock %} 

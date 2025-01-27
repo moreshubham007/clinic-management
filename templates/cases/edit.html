@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Case - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Edit Case</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Case Information -->
+                    <div class="mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Patient:</strong> {{ case.patient.name }}</p>
+                                <p><strong>Created:</strong> {{ case.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Status:</strong>
+                                    <span class="badge bg-{{ {
+                                        'active': 'primary',
+                                        'closed': 'secondary',
+                                        'transferred': 'info'
+                                    }[case.status] }}">{{ case.status.title() }}</span>
+                                </p>
+                                {% if case.updated_at %}
+                                    <p><strong>Last Updated:</strong> {{ case.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Form -->
+                    <form method="POST" action="{{ url_for('cases.update_case', case_id=case.id) }}">
+                        <div class="mb-3">
+                            <label for="diagnosis" class="form-label">Diagnosis</label>
+                            <textarea class="form-control" id="diagnosis" name="diagnosis" 
+                                      rows="4" required>{{ case.diagnosis }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="treatment" class="form-label">Treatment Plan</label>
+                            <textarea class="form-control" id="treatment" name="treatment" 
+                                      rows="4" required>{{ case.treatment }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="show_to_patient" 
+                                       name="show_to_patient" {% if case.show_to_patient %}checked{% endif %}>
+                                <label class="form-check-label" for="show_to_patient">
+                                    Show case details to patient
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('cases.view_case', case_id=case.id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

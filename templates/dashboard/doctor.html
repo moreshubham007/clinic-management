@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Doctor Dashboard</h2>
+
+    <div class="row">
+        <!-- Today's Appointments -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Today's Appointments</h5>
+                </div>
+                <div class="card-body">
+                    {% if today_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in today_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.datetime.strftime('%H:%M') }}</td>
+                                        <td>{{ appointment.patient.name }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ {
+                                                'scheduled': 'warning',
+                                                'completed': 'success',
+                                                'cancelled': 'danger'
+                                            }[appointment.status] }}">
+                                                {{ appointment.status.capitalize() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{{ url_for('appointments.update_appointment', id=appointment.id) }}"
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if appointment.status == 'scheduled' %}
+                                                <a href="{{ url_for('appointments.create_case', appointment_id=appointment.id) }}"
+                                                   class="btn btn-sm btn-success">
+                                                    <i class="fas fa-file-medical"></i> Create Case
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No appointments scheduled for today.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Upcoming Appointments (Next 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.datetime.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ appointment.datetime.strftime('%H:%M') }}</td>
+                                        <td>{{ appointment.patient.name }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ {
+                                                'scheduled': 'warning',
+                                                'completed': 'success',
+                                                'cancelled': 'danger'
+                                            }[appointment.status] }}">
+                                                {{ appointment.status.capitalize() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('appointments.update_appointment', id=appointment.id) }}"
+                                               class="btn btn-sm btn-info">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No upcoming appointments.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="col-md-4">
+            <!-- Recent Cases -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Cases</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_cases %}
+                        <div class="list-group list-group-flush">
+                            {% for case in recent_cases %}
+                            <a href="{{ url_for('appointments.view_patient_cases', patient_id=case.patient_id) }}"
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ case.patient.name }}</h6>
+                                    <small>{{ case.created_at.strftime('%Y-%m-%d') }}</small>
+                                </div>
+                                <p class="mb-1 text-truncate">{{ case.diagnosis }}</p>
+                                <small class="text-muted">Status: {{ case.status.capitalize() }}</small>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No recent cases.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Unanswered Questions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Unanswered Questions</h5>
+                </div>
+                <div class="card-body">
+                    {% if unanswered_questions %}
+                        <div class="list-group list-group-flush">
+                            {% for question in unanswered_questions %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ question.patient.name }}</h6>
+                                    <small>{{ question.created_at.strftime('%Y-%m-%d') }}</small>
+                                </div>
+                                <p class="mb-1">{{ question.question }}</p>
+                                <form method="POST" action="{{ url_for('patient.answer_question', question_id=question.id) }}"
+                                      class="mt-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="answer" 
+                                               placeholder="Type your answer..." required>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">No unanswered questions.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

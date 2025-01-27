@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Create Appointment - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Create New Appointment</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% if current_user.role in ['admin', 'receptionist'] %}
+                        <div class="mb-4">
+                            <label class="form-label">Search Patient</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="patient_search" 
+                                       placeholder="Search by name, phone number, or patient ID..."
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clear_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="patient_id" name="patient_id" required>
+                            <div class="invalid-feedback">
+                                Please select a patient.
+                            </div>
+                            <!-- Search Results Dropdown -->
+                            <div id="search_results" class="list-group mt-2 shadow-sm" 
+                                 style="display: none; max-height: 200px; overflow-y: auto; position: absolute; width: 95%; z-index: 1000; background: white;">
+                            </div>
+                            <!-- Selected Patient Info -->
+                            <div id="selected_patient_info" class="mt-2" style="display: none;">
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-user-check me-2"></i>
+                                    Selected Patient: <strong id="selected_patient_name"></strong>
+                                    <br>
+                                    <small class="text-muted" id="selected_patient_details"></small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="doctor_id" class="form-label">Doctor</label>
+                            <select class="form-select" id="doctor_id" name="doctor_id" required>
+                                <option value="">Select Doctor</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}">Dr. {{ doctor.user.name }} ({{ doctor.specialization }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="date" name="date" required 
+                                   min="{{ today }}" value="{{ today }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="time" class="form-label">Time</label>
+                            <select class="form-select" id="time" name="time" required disabled>
+                                <option value="">Select Date and Doctor First</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Administrative Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                    placeholder="Any administrative notes or special instructions"></textarea>
+                        </div>
+
+                        {% if current_user.role == 'doctor' %}
+                        <div class="mb-3">
+                            <label for="remarks" class="form-label">Doctor's Remarks</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                    placeholder="Clinical observations, recommendations, or follow-up instructions for the patient"></textarea>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Create Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Patient search functionality
+    const searchInput = document.getElementById('patient_search');
+    const searchResults = document.getElementById('search_results');
+    const patientIdInput = document.getElementById('patient_id');
+    const selectedPatientInfo = document.getElementById('selected_patient_info');
+    const selectedPatientName = document.getElementById('selected_patient_name');
+    const selectedPatientDetails = document.getElementById('selected_patient_details');
+    const clearSearchBtn = document.getElementById('clear_search');
+
+    let searchTimeout;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                fetch(`/appointments/search-patient?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        searchResults.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(patient => {
+                                const item = document.createElement('a');
+                                item.href = '#';
+                                item.className = 'list-group-item list-group-item-action';
+                                item.innerHTML = `
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${patient.name}</strong><br>
+                                            <small class="text-muted">
+                                                ID: ${patient.patient_number || 'Not Assigned'} | 
+                                                Phone: ${patient.mobile_number || 'Not Provided'}
+                                            </small>
+                                        </div>
+                                    </div>
+                                `;
+                                item.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    selectPatient(patient);
+                                });
+                                searchResults.appendChild(item);
+                            });
+                            searchResults.style.display = 'block';
+                        } else {
+                            searchResults.innerHTML = '<div class="list-group-item">No patients found</div>';
+                            searchResults.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        searchResults.innerHTML = '<div class="list-group-item text-danger">Error searching patients</div>';
+                        searchResults.style.display = 'block';
+                    });
+            }, 300);
+        });
+
+        function selectPatient(patient) {
+            patientIdInput.value = patient.id;
+            searchInput.value = patient.name;
+            selectedPatientName.textContent = patient.name;
+            selectedPatientDetails.textContent = `ID: ${patient.patient_number || 'Not Assigned'} | Email: ${patient.email} | Phone: ${patient.mobile_number || 'Not Provided'}`;
+            selectedPatientInfo.style.display = 'block';
+            searchResults.style.display = 'none';
+        }
+
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            patientIdInput.value = '';
+            selectedPatientInfo.style.display = 'none';
+            searchResults.style.display = 'none';
+        });
+
+        // Close search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+    }
+
+    // Doctor availability functionality
+    const doctorSelect = document.getElementById('doctor_id');
+    const dateInput = document.getElementById('date');
+    const timeSelect = document.getElementById('time');
+
+    function updateAvailableSlots() {
+        const doctorId = doctorSelect.value;
+        const date = dateInput.value;
+
+        if (!doctorId || !date) {
+            timeSelect.disabled = true;
+            timeSelect.innerHTML = '<option value="">Select Date and Doctor First</option>';
+            return;
+        }
+
+        timeSelect.disabled = true;
+        timeSelect.innerHTML = '<option value="">Loading available slots...</option>';
+
+        fetch(`/appointments/doctor/${doctorId}/availability?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                timeSelect.innerHTML = '';
+                if (data.error) {
+                    timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                    return;
+                }
+
+                const availableSlots = data.available_slots.filter(
+                    slot => !data.booked_slots.includes(slot)
+                );
+
+                if (availableSlots.length === 0) {
+                    timeSelect.innerHTML = '<option value="">No available slots</option>';
+                } else {
+                    timeSelect.innerHTML = '<option value="">Select Time</option>';
+                    availableSlots.forEach(slot => {
+                        const option = document.createElement('option');
+                        option.value = slot;
+                        option.textContent = slot;
+                        timeSelect.appendChild(option);
+                    });
+                }
+                timeSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+    }
+
+    doctorSelect.addEventListener('change', updateAvailableSlots);
+    dateInput.addEventListener('change', updateAvailableSlots);
+
+    // Form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %} 

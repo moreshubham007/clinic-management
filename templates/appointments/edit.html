@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Appointment - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Edit Appointment</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Appointment Information -->
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Patient:</strong> {{ appointment.patient.name }}</p>
+                                <p class="mb-1"><strong>Doctor:</strong> Dr. {{ appointment.doctor.user.name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1">
+                                    <strong>Status:</strong>
+                                    <span class="badge bg-{{ {
+                                        'scheduled': 'warning',
+                                        'completed': 'success',
+                                        'cancelled': 'danger'
+                                    }[appointment.status] }}">
+                                        {{ appointment.status.capitalize() }}
+                                    </span>
+                                </p>
+                                <p class="mb-1">
+                                    <strong>Created:</strong> 
+                                    {{ appointment.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% if appointment.status == 'scheduled' %}
+                        <!-- Date and Time (only editable if appointment is scheduled) -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="date" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="date" name="date" 
+                                       value="{{ appointment.datetime.strftime('%Y-%m-%d') }}"
+                                       min="{{ now.strftime('%Y-%m-%d') }}" required>
+                                <div class="invalid-feedback">
+                                    Please select a valid date.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="time" class="form-label">Time</label>
+                                <select class="form-select" id="time" name="time" required>
+                                    <option value="{{ appointment.datetime.strftime('%H:%M') }}">
+                                        {{ appointment.datetime.strftime('%H:%M') }}
+                                    </option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Please select a valid time slot.
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Administrative Notes -->
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Administrative Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                    placeholder="Any administrative notes or special instructions">{{ appointment.notes }}</textarea>
+                        </div>
+
+                        <!-- Doctor's Remarks (only visible to doctors) -->
+                        {% if current_user.role == 'doctor' %}
+                        <div class="mb-3">
+                            <label for="remarks" class="form-label">Doctor's Remarks</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                    placeholder="Clinical observations, recommendations, or follow-up instructions for the patient">{{ appointment.remarks }}</textarea>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                            <div class="btn-group">
+                                {% if appointment.status == 'scheduled' %}
+                                <button type="button" class="btn btn-success" onclick="markCompleted({{ appointment.id }})">
+                                    <i class="fas fa-check"></i> Mark Completed
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="cancelAppointment({{ appointment.id }})">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                {% endif %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Time slot updates
+    const dateInput = document.getElementById('date');
+    const timeSelect = document.getElementById('time');
+    const currentTime = "{{ appointment.datetime.strftime('%H:%M') }}";
+
+    if (dateInput && timeSelect) {
+        dateInput.addEventListener('change', updateTimeSlots);
+
+        function updateTimeSlots() {
+            const date = dateInput.value;
+            const doctorId = {{ appointment.doctor_id }};
+
+            timeSelect.disabled = true;
+            timeSelect.innerHTML = '<option value="">Loading available slots...</option>';
+
+            fetch(`/appointments/doctor/${doctorId}/availability?date=${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    timeSelect.innerHTML = '';
+                    if (data.error) {
+                        timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                        return;
+                    }
+
+                    const availableSlots = data.available_slots.filter(
+                        slot => !data.booked_slots.includes(slot) || slot === currentTime
+                    );
+
+                    if (availableSlots.length === 0) {
+                        timeSelect.innerHTML = '<option value="">No available slots</option>';
+                    } else {
+                        availableSlots.forEach(slot => {
+                            const option = document.createElement('option');
+                            option.value = slot;
+                            option.textContent = slot;
+                            option.selected = slot === currentTime;
+                            timeSelect.appendChild(option);
+                        });
+                    }
+                    timeSelect.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+                });
+        }
+    }
+});
+
+function markCompleted(appointmentId) {
+    if (confirm('Mark this appointment as completed?')) {
+        fetch(`/appointments/${appointmentId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.href = "{{ url_for('appointments.list_appointments') }}";
+            }
+        });
+    }
+}
+
+function cancelAppointment(appointmentId) {
+    if (confirm('Are you sure you want to cancel this appointment?')) {
+        fetch(`/appointments/${appointmentId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.href = "{{ url_for('appointments.list_appointments') }}";
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

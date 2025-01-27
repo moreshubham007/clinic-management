@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Case - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Create New Case</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="patient_search" class="form-label">Search Patient <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="patient_search" 
+                                       placeholder="Search by name or email..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="clear_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="patient_id" name="patient_id" required>
+                            <div class="invalid-feedback">
+                                Please select a patient.
+                            </div>
+                            <!-- Search Results Dropdown -->
+                            <div id="search_results" class="list-group mt-2 shadow-sm" style="display: none; max-height: 200px; overflow-y: auto; position: absolute; width: 95%; z-index: 1000; background: white;">
+                            </div>
+                            <!-- Selected Patient Info -->
+                            <div id="selected_patient_info" class="mt-2" style="display: none;">
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-user-check me-2"></i>
+                                    Selected Patient: <strong id="selected_patient_name"></strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="diagnosis" class="form-label">Diagnosis <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required></textarea>
+                            <div class="invalid-feedback">
+                                Please provide a diagnosis.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="treatment" class="form-label">Treatment Plan <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="treatment" name="treatment" rows="3" required></textarea>
+                            <div class="invalid-feedback">
+                                Please provide a treatment plan.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="show_to_patient" name="show_to_patient" checked>
+                                <label class="form-check-label" for="show_to_patient">
+                                    Show case details to patient
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('cases.list_cases') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Create Case
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+
+// Patient search functionality
+let searchTimeout;
+const searchInput = document.getElementById('patient_search');
+const searchResults = document.getElementById('search_results');
+const patientIdInput = document.getElementById('patient_id');
+const selectedPatientInfo = document.getElementById('selected_patient_info');
+const selectedPatientName = document.getElementById('selected_patient_name');
+const clearSearchBtn = document.getElementById('clear_search');
+
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+    
+    if (query.length < 2) {
+        searchResults.style.display = 'none';
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetch(`/api/search_patients?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                searchResults.innerHTML = '';
+                if (data.length > 0) {
+                    data.forEach(patient => {
+                        const item = document.createElement('a');
+                        item.href = '#';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${patient.name}</strong><br>
+                                    <small class="text-muted">${patient.email}</small>
+                                </div>
+                            </div>
+                        `;
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            selectPatient(patient);
+                        });
+                        searchResults.appendChild(item);
+                    });
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.innerHTML = '<div class="list-group-item">No patients found</div>';
+                    searchResults.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching patients:', error);
+                searchResults.innerHTML = '<div class="list-group-item text-danger">Error searching patients</div>';
+                searchResults.style.display = 'block';
+            });
+    }, 300);
+});
+
+function selectPatient(patient) {
+    patientIdInput.value = patient.id;
+    searchInput.value = patient.name;
+    selectedPatientName.textContent = `${patient.name} (${patient.email})`;
+    selectedPatientInfo.style.display = 'block';
+    searchResults.style.display = 'none';
+}
+
+clearSearchBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    patientIdInput.value = '';
+    selectedPatientInfo.style.display = 'none';
+    searchResults.style.display = 'none';
+});
+
+// Close search results when clicking outside
+document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.style.display = 'none';
+    }
+});
+</script>
+{% endblock %} 

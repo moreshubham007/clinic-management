@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}My Medical Cases - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">My Medical Cases</h5>
+                </div>
+                <div class="card-body">
+                    {% if cases %}
+                        <div class="accordion" id="casesAccordion">
+                            {% for case in cases %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ case.id }}">
+                                        <button class="accordion-button collapsed" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#collapse{{ case.id }}">
+                                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                                <span>
+                                                    <strong>Dr. {{ case.doctor.user.name }}</strong> - 
+                                                    {{ case.created_at.strftime('%Y-%m-%d') }}
+                                                </span>
+                                                {% if case.feedback_rating %}
+                                                    <span class="badge bg-success ms-2">Feedback Provided</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning ms-2">Pending Feedback</span>
+                                                {% endif %}
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ case.id }}" class="accordion-collapse collapse" 
+                                         data-bs-parent="#casesAccordion">
+                                        <div class="accordion-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">Diagnosis</h6>
+                                                    <p>{{ case.diagnosis }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">Treatment Plan</h6>
+                                                    <p>{{ case.treatment }}</p>
+                                                </div>
+                                            </div>
+
+                                            {% if case.feedback_rating %}
+                                                <div class="mt-4">
+                                                    <h6 class="mb-3">Your Feedback</h6>
+                                                    <div class="card bg-light">
+                                                        <div class="card-body">
+                                                            <div class="mb-2">
+                                                                <strong>Rating:</strong>
+                                                                {% for i in range(5) %}
+                                                                    <i class="fas fa-star{{ ' text-warning' if i < case.feedback_rating else ' text-muted' }}"></i>
+                                                                {% endfor %}
+                                                            </div>
+                                                            <div>
+                                                                <strong>Comments:</strong>
+                                                                <p class="mb-0">{{ case.feedback_text }}</p>
+                                                            </div>
+                                                            <small class="text-muted">
+                                                                Submitted on {{ case.feedback_date.strftime('%Y-%m-%d %H:%M') }}
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <div class="mt-4">
+                                                    <a href="{{ url_for('cases.view_case', case_id=case.id) }}" 
+                                                       class="btn btn-primary">
+                                                        Provide Feedback
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-0">No medical cases found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

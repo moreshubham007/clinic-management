@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Patients List - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Patients List</h2>
+        <a href="{{ url_for('receptionist.create_patient') }}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Create Patient
+        </a>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-purple-100 border-0">
+                            <i class="fas fa-search text-purple-600"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Search by name, email, or patient number..."
+                               value="{{ search }}">
+                        {% if search %}
+                        <a href="{{ url_for('receptionist.patients_list') }}" 
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary">
+                            Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Patients List -->
+    <div class="card">
+        <div class="card-body">
+            {% if patients %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Patient Number</th>
+                            <th>Name</th>
+                            <th>Mobile Number</th>
+                            <th>City</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-purple-100 text-dark">
+                                    {{ patient.patient_number or 'Not Assigned' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle bg-purple-100 text-purple-600 me-2">
+                                        {{ patient.name[:2].upper() }}
+                                    </div>
+                                    {{ patient.name }}
+                                </div>
+                            </td>
+                            <td>{{ patient.mobile_number or 'Not provided' }}</td>
+                            <td>{{ patient.city or 'Not provided' }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary view-details" 
+                                            data-bs-toggle="modal" data-bs-target="#patientDetailsModal"
+                                            data-patient-id="{{ patient.id }}"
+                                            data-patient-name="{{ patient.name }}"
+                                            data-patient-email="{{ patient.email }}"
+                                            data-patient-number="{{ patient.patient_number }}"
+                                            data-patient-mobile="{{ patient.mobile_number }}"
+                                            data-patient-city="{{ patient.city }}"
+                                            data-patient-address="{{ patient.address }}"
+                                            data-patient-gender="{{ patient.gender }}"
+                                            data-patient-dob="{{ patient.date_of_birth }}">
+                                        <i class="fas fa-eye"></i> View Details
+                                    </button>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('receptionist.patient_history', patient_id=patient.id) }}" 
+                                           class="btn btn-info btn-sm" title="View Patient History">
+                                            <i class="fas fa-history"></i> History
+                                        </a>
+                                        <a href="{{ url_for('appointments.create_appointment', patient_id=patient.id) }}" 
+                                           class="btn btn-primary btn-sm" title="Create New Appointment">
+                                            <i class="fas fa-calendar-plus"></i> New Appointment
+                                        </a>
+                                    </td>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                {% if search %}
+                <div class="mb-3">
+                    <i class="fas fa-search fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">No patients found matching your search</h5>
+                <p class="text-muted mb-0">Try adjusting your search terms</p>
+                {% else %}
+                <div class="mb-3">
+                    <i class="fas fa-users fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">No patients registered yet</h5>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Patient Details Modal -->
+<div class="modal fade" id="patientDetailsModal" tabindex="-1" aria-labelledby="patientDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="patientDetailsModalLabel">Patient Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> <span id="modalPatientName"></span></p>
+                        <p><strong>Patient Number:</strong> <span id="modalPatientNumber"></span></p>
+                        <p><strong>Email:</strong> <span id="modalPatientEmail"></span></p>
+                        <p><strong>Mobile Number:</strong> <span id="modalPatientMobile"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Gender:</strong> <span id="modalPatientGender"></span></p>
+                        <p><strong>Date of Birth:</strong> <span id="modalPatientDOB"></span></p>
+                        <p><strong>City:</strong> <span id="modalPatientCity"></span></p>
+                        <p><strong>Address:</strong> <span id="modalPatientAddress"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="editPatientBtn" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit Patient
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle view details button click
+    const viewDetailsButtons = document.querySelectorAll('.view-details');
+    viewDetailsButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const patientId = this.dataset.patientId;
+            const patientName = this.dataset.patientName;
+            const patientEmail = this.dataset.patientEmail;
+            const patientNumber = this.dataset.patientNumber;
+            const patientMobile = this.dataset.patientMobile;
+            const patientCity = this.dataset.patientCity;
+            const patientAddress = this.dataset.patientAddress;
+            const patientGender = this.dataset.patientGender;
+            const patientDOB = this.dataset.patientDob;
+
+            // Update modal content
+            document.getElementById('modalPatientName').textContent = patientName;
+            document.getElementById('modalPatientNumber').textContent = patientNumber || 'Not Assigned';
+            document.getElementById('modalPatientEmail').textContent = patientEmail;
+            document.getElementById('modalPatientMobile').textContent = patientMobile || 'Not Provided';
+            document.getElementById('modalPatientGender').textContent = patientGender || 'Not Provided';
+            document.getElementById('modalPatientDOB').textContent = patientDOB || 'Not Provided';
+            document.getElementById('modalPatientCity').textContent = patientCity || 'Not Provided';
+            document.getElementById('modalPatientAddress').textContent = patientAddress || 'Not Provided';
+
+            // Update edit button href
+            document.getElementById('editPatientBtn').href = `{{ url_for('receptionist.edit_patient', patient_id=0) }}`.replace('0', patientId);
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %} 

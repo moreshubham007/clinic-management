@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Give Feedback - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Give Feedback</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Doctor Information -->
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-user-md fa-2x"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="alert-heading mb-1">Dr. {{ doctor.user.name }}</h5>
+                                <p class="mb-0">{{ doctor.specialization }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        <!-- Rating -->
+                        <div class="mb-4">
+                            <label class="form-label">Rating</label>
+                            <div class="rating-container">
+                                <div class="btn-group" role="group">
+                                    {% for i in range(1, 6) %}
+                                    <input type="radio" class="btn-check" name="rating" 
+                                           id="rating{{ i }}" value="{{ i }}" required>
+                                    <label class="btn btn-outline-warning" for="rating{{ i }}">
+                                        <i class="fas fa-star"></i>
+                                        <span class="d-block small">{{ {
+                                            1: 'Poor',
+                                            2: 'Fair',
+                                            3: 'Good',
+                                            4: 'Very Good',
+                                            5: 'Excellent'
+                                        }[i] }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                                <div class="invalid-feedback">
+                                    Please select a rating.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feedback Categories -->
+                        <div class="mb-4">
+                            <label class="form-label">What aspects were you most satisfied with?</label>
+                            <div class="row">
+                                {% for category, icon in {
+                                    'Medical Knowledge': 'brain',
+                                    'Communication': 'comments',
+                                    'Punctuality': 'clock',
+                                    'Attentiveness': 'ear',
+                                    'Treatment Explanation': 'chalkboard-teacher',
+                                    'Follow-up Care': 'calendar-check'
+                                }.items() %}
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="categories[]" value="{{ category }}"
+                                               id="category_{{ loop.index }}">
+                                        <label class="form-check-label" for="category_{{ loop.index }}">
+                                            <i class="fas fa-{{ icon }} me-1"></i> {{ category }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Detailed Feedback -->
+                        <div class="mb-4">
+                            <label for="comment" class="form-label">Detailed Feedback</label>
+                            <textarea class="form-control" id="comment" name="comment" 
+                                      rows="5" required></textarea>
+                            <div class="invalid-feedback">
+                                Please provide your feedback.
+                            </div>
+                            <div class="form-text">
+                                Your feedback helps us improve our services and helps other patients 
+                                make informed decisions.
+                            </div>
+                        </div>
+
+                        <!-- Privacy Options -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_anonymous" 
+                                       name="is_anonymous">
+                                <label class="form-check-label" for="is_anonymous">
+                                    Submit Anonymously
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                When anonymous, your name will not be displayed with the feedback.
+                            </div>
+                        </div>
+
+                        <!-- Consent -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="consent" 
+                                       name="consent" required>
+                                <label class="form-check-label" for="consent">
+                                    I confirm that this feedback is based on my personal experience 
+                                    and is honest and accurate.
+                                </label>
+                                <div class="invalid-feedback">
+                                    You must confirm this before submitting.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('patient.view_my_cases') }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Submit Feedback
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.rating-container .btn-group {
+    width: 100%;
+}
+
+.rating-container .btn {
+    flex: 1;
+    padding: 1rem 0.5rem;
+}
+
+.rating-container .btn:hover {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.rating-container .btn-check:checked + .btn {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+}
+
+.rating-container .small {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Rating hover effect
+    const ratingLabels = document.querySelectorAll('.rating-container .btn');
+    ratingLabels.forEach((label, index) => {
+        label.addEventListener('mouseover', () => {
+            ratingLabels.forEach((l, i) => {
+                if (i <= index) {
+                    l.classList.add('btn-warning');
+                    l.classList.remove('btn-outline-warning');
+                }
+            });
+        });
+
+        label.addEventListener('mouseout', () => {
+            ratingLabels.forEach(l => {
+                if (!l.control.checked) {
+                    l.classList.remove('btn-warning');
+                    l.classList.add('btn-outline-warning');
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %} 

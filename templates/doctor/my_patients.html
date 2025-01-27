@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}My Patients - Clinic Management System{% endblock %}
+
+{% block header_title %}My Patients{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-purple-100 border-0">
+                            <i class="fas fa-search text-purple-600"></i>
+                        </span>
+                        <input type="text" id="patientSearch" class="form-control border-0 bg-purple-50" 
+                               placeholder="Search patients by name or email...">
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <button class="btn btn-outline-secondary me-2" onclick="filterPatients('all')">
+                        All Patients
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filterPatients('active')">
+                        Active Cases Only
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patients List -->
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(45deg, var(--purple-600), var(--purple-700));">
+            <h5 class="card-title mb-0 text-white">Patient List</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if patients %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="patientsTable">
+                    <thead>
+                        <tr>
+                            <th class="bg-purple-50">Patient Name</th>
+                            <th class="bg-purple-50">Patient ID</th>
+                            <th class="bg-purple-50">Email</th>
+                            <th class="bg-purple-50">Total Appointments</th>
+                            <th class="bg-purple-50">Total Cases</th>
+                            <th class="bg-purple-50">Active Cases</th>
+                            <th class="bg-purple-50">Last Visit</th>
+                            <th class="bg-purple-50">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients %}
+                        <tr class="patient-row" data-active-cases="{{ patient_stats[patient.id]['active_cases'] }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle bg-purple-100 text-purple-600 me-2">
+                                        {{ patient.name[:2].upper() }}
+                                    </div>
+                                    {{ patient.name }}
+                                </div>
+                            </td>
+                            <td>{{ patient.patient_number or 'Not assigned' }}</td>
+                            <td>{{ patient.email }}</td>
+                            <td>{{ patient_stats[patient.id]['total_appointments'] }}</td>
+                            <td>{{ patient_stats[patient.id]['total_cases'] }}</td>
+                            <td>
+                                {% if patient_stats[patient.id]['active_cases'] > 0 %}
+                                <span class="badge bg-success">
+                                    {{ patient_stats[patient.id]['active_cases'] }} Active
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">No Active Cases</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if patient_stats[patient.id]['last_visit'] %}
+                                {{ patient_stats[patient.id]['last_visit'].strftime('%Y-%m-%d') }}
+                                {% else %}
+                                <span class="text-muted">No visits yet</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('patient.view_history', patient_id=patient.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-history"></i> History
+                                    </a>
+                                    <a href="{{ url_for('appointments.create_appointment') }}?patient_id={{ patient.id }}" 
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-calendar-plus"></i> New Appointment
+                                    </a>
+                                    <a href="{{ url_for('cases.create_case_without_appointment') }}?patient_id={{ patient.id }}" 
+                                       class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-file-medical"></i> New Case
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-user-friends fa-3x text-muted"></i>
+                </div>
+                <h5 class="text-muted">No patients found</h5>
+                <p class="text-muted mb-0">You haven't treated any patients yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-weight: 500;
+}
+</style>
+
+{% block extra_js %}
+<script>
+document.getElementById('patientSearch').addEventListener('input', function(e) {
+    const searchText = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#patientsTable tbody tr');
+    
+    rows.forEach(row => {
+        const name = row.querySelector('td:first-child').textContent.toLowerCase();
+        const email = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        
+        if (name.includes(searchText) || email.includes(searchText)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+function filterPatients(filter) {
+    const rows = document.querySelectorAll('.patient-row');
+    rows.forEach(row => {
+        if (filter === 'all') {
+            row.style.display = '';
+        } else if (filter === 'active') {
+            const activeCases = parseInt(row.dataset.activeCases);
+            row.style.display = activeCases > 0 ? '' : 'none';
+        }
+    });
+}
+</script>
+{% endblock %}
+{% endblock %} 

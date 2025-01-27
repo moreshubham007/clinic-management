@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Ask Question - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Ask a Question</h4>
+                </div>
+                <div class="card-body">
+                    {% if doctors %}
+                        <form method="POST" class="needs-validation" novalidate>
+                            <!-- Doctor Selection -->
+                            <div class="mb-4">
+                                <label for="doctor_id" class="form-label">Select Doctor</label>
+                                <select class="form-select" id="doctor_id" name="doctor_id" required>
+                                    <option value="">Choose a doctor</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">
+                                        Dr. {{ doctor.user.name }} - {{ doctor.specialization }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">
+                                    Please select a doctor.
+                                </div>
+                                <div class="form-text">
+                                    You can only ask questions to doctors who have treated you.
+                                </div>
+                            </div>
+
+                            <!-- Question Type -->
+                            <div class="mb-4">
+                                <label class="form-label">Question Type</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="question_type" 
+                                           id="type_general" value="general" checked>
+                                    <label class="form-check-label" for="type_general">
+                                        General Question
+                                    </label>
+                                    <div class="form-text">
+                                        For general medical advice or questions about your treatment.
+                                    </div>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="question_type" 
+                                           id="type_followup" value="followup">
+                                    <label class="form-check-label" for="type_followup">
+                                        Follow-up Question
+                                    </label>
+                                    <div class="form-text">
+                                        For questions related to a previous consultation or treatment.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Question -->
+                            <div class="mb-4">
+                                <label for="question" class="form-label">Your Question</label>
+                                <textarea class="form-control" id="question" name="question" 
+                                          rows="5" required></textarea>
+                                <div class="invalid-feedback">
+                                    Please write your question.
+                                </div>
+                                <div class="form-text">
+                                    Be specific and include relevant details to help the doctor understand your concern.
+                                </div>
+                            </div>
+
+                            <!-- Privacy Option -->
+                            <div class="mb-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="is_private" 
+                                           name="is_private">
+                                    <label class="form-check-label" for="is_private">
+                                        Mark as Private
+                                    </label>
+                                </div>
+                                <div class="form-text">
+                                    Private questions are only visible to you and the doctor.
+                                </div>
+                            </div>
+
+                            <!-- Attachments (if needed in future) -->
+                            <div class="mb-4">
+                                <label class="form-label text-muted">
+                                    <i class="fas fa-paperclip"></i> Attachments
+                                </label>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    File attachments will be supported in a future update.
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="{{ url_for('patient.my_questions') }}" class="btn btn-secondary">
+                                    Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i> Send Question
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-user-md fa-3x text-muted mb-3"></i>
+                            <h5>No Doctors Available</h5>
+                            <p class="text-muted">
+                                You can only ask questions to doctors who have treated you. 
+                                Please schedule an appointment first.
+                            </p>
+                            <a href="{{ url_for('appointments.create_appointment') }}" 
+                               class="btn btn-primary">
+                                Schedule Appointment
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+
+    // Question type toggle
+    const typeGeneral = document.getElementById('type_general');
+    const typeFollowup = document.getElementById('type_followup');
+    const questionTextarea = document.getElementById('question');
+
+    function updatePlaceholder() {
+        if (typeGeneral.checked) {
+            questionTextarea.placeholder = 'Example: What are the potential side effects of my prescribed medication?';
+        } else {
+            questionTextarea.placeholder = 'Example: Regarding my last visit, I noticed [symptom]. Should I be concerned?';
+        }
+    }
+
+    typeGeneral.addEventListener('change', updatePlaceholder);
+    typeFollowup.addEventListener('change', updatePlaceholder);
+    updatePlaceholder();
+});
+</script>
+{% endblock %} 

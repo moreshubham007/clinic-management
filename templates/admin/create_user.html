@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if user else 'Create' }} User - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ 'Edit' if user else 'Create New' }} User</h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" class="needs-validation" novalidate>
+                        <!-- Basic Information -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ form_data.name if form_data else '' }}" required
+                                       pattern="[A-Za-z\s]+" minlength="2" maxlength="100">
+                                <div class="invalid-feedback">
+                                    Please provide a valid name (2-100 characters, letters only).
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ form_data.email if form_data else '' }}" required>
+                                <div class="invalid-feedback">
+                                    Please provide a valid email address.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Role Selection -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="role" class="form-label">Role</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="">Select Role</option>
+                                    <option value="doctor" {% if form_data and form_data.role == 'doctor' %}selected{% endif %}>Doctor</option>
+                                    <option value="receptionist" {% if form_data and form_data.role == 'receptionist' %}selected{% endif %}>Receptionist</option>
+                                    <option value="patient" {% if form_data and form_data.role == 'patient' %}selected{% endif %}>Patient</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Please select a role.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required
+                                       minlength="8" maxlength="100">
+                                <div class="invalid-feedback">
+                                    Password must be at least 8 characters long.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Patient-specific Fields -->
+                        <div id="patientFields" class="mb-3" style="display: none;">
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="address" class="form-label">Street Address</label>
+                                    <textarea class="form-control" id="address" name="address" rows="2" required>{{ form_data.address if form_data else '' }}</textarea>
+                                    <div class="invalid-feedback">
+                                        Please provide a valid street address.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="state" class="form-label">State</label>
+                                    <select class="form-select" id="state" name="state" required>
+                                        <option value="">Select State</option>
+                                        {% for state in [
+                                            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+                                            "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand",
+                                            "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+                                            "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+                                            "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+                                            "Uttar Pradesh", "Uttarakhand", "West Bengal",
+                                            "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli",
+                                            "Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh",
+                                            "Lakshadweep", "Puducherry"
+                                        ] %}
+                                        <option value="{{ state }}" {% if form_data and form_data.state == state %}selected{% endif %}>{{ state }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="invalid-feedback">
+                                        Please select a state.
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="city" class="form-label">City</label>
+                                    <input type="text" class="form-control" id="city" name="city" required
+                                           value="{{ form_data.city if form_data else '' }}"
+                                           pattern="[A-Za-z\s\-]+" minlength="2" maxlength="50">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid city name.
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="pin_code" class="form-label">PIN Code</label>
+                                    <input type="text" class="form-control" id="pin_code" name="pin_code" required
+                                           value="{{ form_data.pin_code if form_data else '' }}"
+                                           pattern="[0-9]{6}" maxlength="6" placeholder="XXXXXX">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid 6-digit PIN code.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="mobile_number" class="form-label">Mobile Number</label>
+                                    <input type="tel" class="form-control" id="mobile_number" name="mobile_number" required
+                                           value="{{ form_data.mobile_number if form_data else '' }}"
+                                           pattern="\+?[0-9\-\s]{10,20}" placeholder="Enter mobile number">
+                                    <div class="form-text">Enter mobile number with optional country code (e.g., +1234567890 or 1234567890)</div>
+                                    <div class="invalid-feedback">
+                                        Please provide a valid mobile number (10-15 digits).
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required
+                                           value="{{ form_data.date_of_birth if form_data else '' }}">
+                                    <div class="invalid-feedback">
+                                        Please provide your date of birth.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="aadhar_number" class="form-label">Aadhar Number</label>
+                                    <input type="text" class="form-control" id="aadhar_number" name="aadhar_number" required
+                                           value="{{ form_data.aadhar_number if form_data else '' }}"
+                                           pattern="[0-9]{12}" maxlength="12" placeholder="XXXXXXXXXXXX">
+                                    <div class="form-text">12-digit Aadhar number without spaces</div>
+                                    <div class="invalid-feedback">
+                                        Please provide a valid 12-digit Aadhar number.
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="patient_number" class="form-label">Patient Number</label>
+                                    <input type="text" class="form-control" id="patient_number" name="patient_number" required
+                                           value="{{ form_data.patient_number if form_data else '' }}"
+                                           pattern="INRI-[0-9]{5}" placeholder="INRI-XXXXX" readonly>
+                                    <div class="form-text">Auto-generated when saving</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Doctor-specific Fields -->
+                        <div id="doctorFields" class="mb-3" style="display: none;">
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="specialization" class="form-label">Specialization</label>
+                                    <input type="text" class="form-control" id="specialization" name="specialization" 
+                                           value="{{ form_data.specialization if form_data else '' }}"
+                                           pattern="[A-Za-z\s\-]+" minlength="2" maxlength="50">
+                                    <div class="invalid-feedback">
+                                        Please provide a valid specialization (2-50 characters).
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Availability Section -->
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Weekly Availability</h5>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="copyToAllDays">
+                                            <i class="fas fa-copy"></i> Copy to All Days
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAll">
+                                            <i class="fas fa-trash"></i> Clear All
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Quick Time Range</label>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <select class="form-select" id="quickStartTime" style="width: auto;">
+                                                <option value="">Start Time</option>
+                                                {% for hour in range(0, 24) %}
+                                                    {% for minute in [0, 30] %}
+                                                        <option value="{{ '%02d:%02d'|format(hour, minute) }}">
+                                                            {{ '%02d:%02d'|format(hour, minute) }}
+                                                        </option>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            </select>
+                                            <span>to</span>
+                                            <select class="form-select" id="quickEndTime" style="width: auto;">
+                                                <option value="">End Time</option>
+                                                {% for hour in range(0, 24) %}
+                                                    {% for minute in [0, 30] %}
+                                                        <option value="{{ '%02d:%02d'|format(hour, minute) }}">
+                                                            {{ '%02d:%02d'|format(hour, minute) }}
+                                                        </option>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            </select>
+                                            <select class="form-select" id="timeInterval" style="width: auto;">
+                                                <option value="30">30 min slots</option>
+                                                <option value="60">1 hour slots</option>
+                                            </select>
+                                            <button type="button" class="btn btn-primary" id="applyTimeRange">
+                                                Apply to Selected Day
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <input type="hidden" id="availability" name="availability">
+                                    {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                    <div class="card mb-3 availability-day" data-day="{{ day.lower() }}">
+                                        <div class="card-header bg-light py-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="form-check">
+                                                    <input class="form-check-input day-checkbox" type="checkbox" 
+                                                           id="check_{{ day.lower() }}" checked>
+                                                    <label class="form-check-label" for="check_{{ day.lower() }}">
+                                                        <strong>{{ day }}</strong>
+                                                    </label>
+                                                </div>
+                                                <div class="btn-group">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary copy-day">
+                                                        <i class="fas fa-copy"></i> Copy
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger clear-day">
+                                                        <i class="fas fa-trash"></i> Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-body py-2">
+                                            <div class="selected-slots">
+                                                <!-- Selected time slots will be displayed here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                            <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                {{ 'Update' if user else 'Create' }} User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    const doctorFields = document.getElementById('doctorFields');
+    const patientFields = document.getElementById('patientFields');
+    const availabilityInput = document.getElementById('availability');
+    const specializationInput = document.getElementById('specialization');
+    const patientNumberInput = document.getElementById('patient_number');
+    
+    function toggleFields() {
+        if (roleSelect.value === 'doctor') {
+            doctorFields.style.display = 'block';
+            patientFields.style.display = 'none';
+            specializationInput.required = true;
+        } else if (roleSelect.value === 'patient') {
+            doctorFields.style.display = 'none';
+            patientFields.style.display = 'block';
+            fetchNextPatientNumber();
+        } else {
+            doctorFields.style.display = 'none';
+            patientFields.style.display = 'none';
+            specializationInput.required = false;
+        }
+    }
+    
+    async function fetchNextPatientNumber() {
+        try {
+            const response = await fetch('/admin/api/next-patient-number');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.status === 'error') {
+                throw new Error(data.message || 'Failed to generate patient number');
+            }
+            patientNumberInput.value = data.patient_number;
+        } catch (error) {
+            console.error('Error fetching patient number:', error);
+            alert('Failed to generate patient number. Please try again or contact support.');
+            patientNumberInput.value = '';
+        }
+    }
+    
+    roleSelect.addEventListener('change', toggleFields);
+    toggleFields();
+
+    // Initialize availability data for all days
+    let availabilityData = {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
+    };
+
+    // Quick time range functionality
+    const quickStartTime = document.getElementById('quickStartTime');
+    const quickEndTime = document.getElementById('quickEndTime');
+    const timeInterval = document.getElementById('timeInterval');
+    const applyTimeRange = document.getElementById('applyTimeRange');
+
+    function generateTimeSlots(startTime, endTime, interval) {
+        const slots = [];
+        let current = new Date(`2000-01-01 ${startTime}`);
+        const end = new Date(`2000-01-01 ${endTime}`);
+        
+        while (current < end) {
+            slots.push(current.toTimeString().substring(0, 5));
+            current.setMinutes(current.getMinutes() + parseInt(interval));
+        }
+        
+        return slots;
+    }
+
+    applyTimeRange.addEventListener('click', function() {
+        const startTime = quickStartTime.value;
+        const endTime = quickEndTime.value;
+        const interval = timeInterval.value;
+
+        if (!startTime || !endTime) {
+            alert('Please select both start and end times');
+            return;
+        }
+
+        if (startTime >= endTime) {
+            alert('End time must be after start time');
+            return;
+        }
+
+        const selectedDay = document.querySelector('.availability-day input:checked')?.closest('.availability-day')?.dataset.day;
+        if (!selectedDay) {
+            alert('Please select a day to apply the time range');
+            return;
+        }
+
+        const timeSlots = generateTimeSlots(startTime, endTime, interval);
+        const dayContainer = document.querySelector(`[data-day="${selectedDay}"]`);
+        const slotsContainer = dayContainer.querySelector('.selected-slots');
+
+        // Clear existing slots
+        availabilityData[selectedDay] = [];
+        slotsContainer.innerHTML = '';
+
+        // Add new slots
+        timeSlots.forEach(slot => {
+            addTimeSlotElement(slotsContainer, slot, selectedDay);
+            availabilityData[selectedDay].push(slot);
+        });
+        availabilityData[selectedDay].sort();
+        updateAvailabilityInput();
+    });
+
+    // Copy to all days functionality
+    document.getElementById('copyToAllDays').addEventListener('click', function() {
+        const sourceDayData = Object.values(availabilityData).find(slots => slots.length > 0);
+        if (!sourceDayData) {
+            alert('Please set up at least one day\'s schedule to copy');
+            return;
+        }
+
+        Object.keys(availabilityData).forEach(day => {
+            const dayContainer = document.querySelector(`[data-day="${day}"]`);
+            const slotsContainer = dayContainer.querySelector('.selected-slots');
+            
+            // Clear existing slots
+            availabilityData[day] = [];
+            slotsContainer.innerHTML = '';
+
+            // Copy slots
+            sourceDayData.forEach(slot => {
+                addTimeSlotElement(slotsContainer, slot, day);
+                availabilityData[day].push(slot);
+            });
+            availabilityData[day].sort();
+        });
+        updateAvailabilityInput();
+    });
+
+    // Clear all functionality
+    document.getElementById('clearAll').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all time slots?')) {
+            Object.keys(availabilityData).forEach(day => {
+                availabilityData[day] = [];
+                const slotsContainer = document.querySelector(`[data-day="${day}"] .selected-slots`);
+                slotsContainer.innerHTML = '';
+            });
+            updateAvailabilityInput();
+        }
+    });
+
+    // Copy individual day functionality
+    document.querySelectorAll('.copy-day').forEach(button => {
+        button.addEventListener('click', function() {
+            const dayContainer = this.closest('.availability-day');
+            const day = dayContainer.dataset.day;
+            const slots = availabilityData[day];
+
+            if (slots.length === 0) {
+                alert('Please add some time slots to copy');
+                return;
+            }
+
+            localStorage.setItem('copiedSchedule', JSON.stringify(slots));
+            alert('Schedule copied! You can now paste it to other days.');
+        });
+    });
+
+    // Clear individual day functionality
+    document.querySelectorAll('.clear-day').forEach(button => {
+        button.addEventListener('click', function() {
+            const dayContainer = this.closest('.availability-day');
+            const day = dayContainer.dataset.day;
+            const slotsContainer = dayContainer.querySelector('.selected-slots');
+            
+            availabilityData[day] = [];
+            slotsContainer.innerHTML = '';
+            updateAvailabilityInput();
+        });
+    });
+
+    function addTimeSlotElement(container, time, day) {
+        const slot = document.createElement('div');
+        slot.className = 'badge bg-primary me-2 mb-2 p-2';
+        slot.innerHTML = `
+            ${time}
+            <button type="button" class="btn-close btn-close-white ms-2" 
+                    style="font-size: 0.5em;" aria-label="Remove"></button>
+        `;
+        
+        slot.querySelector('.btn-close').addEventListener('click', function() {
+            slot.remove();
+            availabilityData[day] = availabilityData[day].filter(t => t !== time);
+            updateAvailabilityInput();
+        });
+        
+        container.appendChild(slot);
+    }
+
+    function updateAvailabilityInput() {
+        availabilityInput.value = JSON.stringify(availabilityData);
+    }
+
+    // Update form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (roleSelect.value === 'doctor') {
+            // Check if at least one day has time slots
+            const hasAnySlots = Object.values(availabilityData).some(slots => slots.length > 0);
+            if (!hasAnySlots) {
+                event.preventDefault();
+                alert('Please add at least one time slot to your schedule.');
+                return;
+            }
+        }
+
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+});
+</script>
+
+<style>
+.selected-slots {
+    min-height: 38px;
+    padding: 5px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.btn-close {
+    padding: 0.25rem;
+    font-size: 0.5rem;
+}
+.availability-day {
+    border: 1px solid rgba(0,0,0,.125);
+}
+.availability-day .card-header {
+    background-color: #f8f9fa;
+}
+.time-slot {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin: 0.25rem;
+    background-color: #007bff;
+    color: white;
+    border-radius: 0.25rem;
+}
+</style>
+{% endblock %} 

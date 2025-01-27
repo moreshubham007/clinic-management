@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}View Case - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Case Details</h5>
+                    {% if current_user.role == 'doctor' and current_user.doctor.id == case.doctor_id %}
+                        <div class="btn-group">
+                            {% if case.status == 'closed' %}
+                                <form method="POST" action="{{ url_for('cases.reopen_case', case_id=case.id) }}" 
+                                      class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-folder-open"></i> Reopen Case
+                                    </button>
+                                </form>
+                            {% else %}
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        data-bs-toggle="modal" data-bs-target="#closeCaseModal">
+                                    <i class="fas fa-folder"></i> Close Case
+                                </button>
+                            {% endif %}
+                            <button type="button" class="btn btn-sm btn-light" 
+                                    data-bs-toggle="modal" data-bs-target="#transferCaseModal">
+                                <i class="fas fa-exchange-alt"></i> Transfer Case
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <!-- Case Details Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p><strong>Patient:</strong> {{ case.patient.name }}</p>
+                            <p><strong>Doctor:</strong> Dr. {{ case.doctor.user.name }}</p>
+                            <p><strong>Created:</strong> {{ case.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                            {% if case.updated_at %}
+                                <p><strong>Last Updated:</strong> {{ case.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Specialization:</strong> {{ case.doctor.specialization }}</p>
+                            <p><strong>Status:</strong>
+                                <span class="badge bg-{{ {
+                                    'active': 'primary',
+                                    'closed': 'secondary',
+                                    'transferred': 'info'
+                                }[case.status] }}">{{ case.status.title() }}</span>
+                            </p>
+                            <p><strong>Visibility:</strong>
+                                {% if current_user.role == 'doctor' and current_user.doctor.id == case.doctor_id %}
+                                    <form method="POST" action="{{ url_for('cases.toggle_visibility', case_id=case.id) }}" 
+                                          class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-{{ 'success' if case.show_to_patient else 'danger' }}">
+                                            {{ 'Visible to Patient' if case.show_to_patient else 'Hidden from Patient' }}
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="badge bg-{{ 'success' if case.show_to_patient else 'danger' }}">
+                                        {{ 'Visible to Patient' if case.show_to_patient else 'Hidden from Patient' }}
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Diagnosis and Treatment Section -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>Diagnosis</h6>
+                            <p>{{ case.diagnosis }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Treatment Plan</h6>
+                            <p>{{ case.treatment }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Attachments Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2">Attachments</h6>
+                            
+                            {% if current_user.role == 'doctor' and current_user.doctor.id == case.doctor_id %}
+                            <div class="mb-3">
+                                <form method="POST" action="{{ url_for('cases.upload_attachment', case_id=case.id) }}" 
+                                      enctype="multipart/form-data" class="d-flex gap-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="file" class="form-control" name="file" required>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-upload"></i> Upload
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+
+                            <div class="row g-3">
+                                {% for attachment in case.attachments %}
+                                <div class="col-md-6">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="fas fa-{{ {
+                                                    'pdf': 'file-pdf',
+                                                    'word': 'file-word',
+                                                    'excel': 'file-excel',
+                                                    'powerpoint': 'file-powerpoint',
+                                                    'image': 'file-image',
+                                                    'other': 'file'
+                                                }[attachment.file_type] }} fa-2x me-2"></i>
+                                                <div>
+                                                    <h6 class="mb-0 text-truncate">{{ attachment.original_filename }}</h6>
+                                                    <small class="text-muted">
+                                                        {{ (attachment.file_size / 1024)|round(1) }} KB
+                                                    </small>
+                                                </div>
+                                            </div>
+
+                                            <!-- Document Viewer -->
+                                            <div class="document-viewer mb-3">
+                                                {% if attachment.file_type == 'image' %}
+                                                    <img src="{{ url_for('cases.view_attachment', attachment_id=attachment.id, view=1) }}" 
+                                                         class="img-fluid rounded" alt="{{ attachment.original_filename }}">
+                                                {% elif attachment.file_type == 'pdf' %}
+                                                    <div class="ratio ratio-16x9">
+                                                        <iframe src="{{ url_for('cases.view_attachment', attachment_id=attachment.id, view=1) }}"
+                                                                class="rounded" frameborder="0"></iframe>
+                                                    </div>
+                                                {% elif attachment.file_type in ['word', 'excel', 'powerpoint'] %}
+                                                    <div class="ratio ratio-16x9">
+                                                        <iframe src="{{ url_for('cases.view_attachment', attachment_id=attachment.id, view=1) }}"
+                                                                class="rounded" frameborder="0"></iframe>
+                                                    </div>
+                                                    {% if attachment.file_type == 'powerpoint' %}
+                                                    <div class="mt-2">
+                                                        <small class="text-muted">Having trouble viewing? Try alternate viewer: </small>
+                                                        <a href="{{ url_for('cases.view_attachment', attachment_id=attachment.id, view=1, viewer='google') }}" 
+                                                           class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                            <i class="fab fa-google"></i> Open in Google Docs Viewer
+                                                        </a>
+                                                    </div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    Uploaded {{ attachment.uploaded_at.strftime('%Y-%m-%d %H:%M') }}
+                                                </small>
+                                                <div class="btn-group">
+                                                    <a href="{{ url_for('cases.view_attachment', attachment_id=attachment.id) }}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-download"></i> Download
+                                                    </a>
+                                                    {% if current_user.role == 'doctor' and current_user.doctor.id == case.doctor_id %}
+                                                    <form method="POST" 
+                                                          action="{{ url_for('cases.delete_attachment', attachment_id=attachment.id) }}"
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('Are you sure you want to delete this file?');">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="col-12">
+                                    <p class="text-muted mb-0">No attachments yet.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Closing Notes Section -->
+                    {% if case.closing_notes %}
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6>Closing Notes</h6>
+                                <p>{{ case.closing_notes }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Feedback Section -->
+                    {% if case.feedback_rating and (current_user.role == 'doctor' or current_user.id == case.patient_id) %}
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Patient Feedback</h6>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <strong>Rating:</strong>
+                                            {% for i in range(5) %}
+                                                <i class="fas fa-star{{ ' text-warning' if i < case.feedback_rating else ' text-muted' }}"></i>
+                                            {% endfor %}
+                                        </div>
+                                        <div>
+                                            <strong>Comments:</strong>
+                                            <p class="mb-0">{{ case.feedback_text }}</p>
+                                        </div>
+                                        <small class="text-muted">
+                                            Submitted on {{ case.feedback_date.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif current_user.role == 'patient' and current_user.id == case.patient_id %}
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary" 
+                                        data-bs-toggle="modal" data-bs-target="#feedbackModal">
+                                    <i class="fas fa-star"></i> Provide Feedback
+                                </button>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals Section -->
+{% if current_user.role == 'doctor' and current_user.doctor.id == case.doctor_id and case.status != 'closed' %}
+<div class="modal" id="closeCaseModal" tabindex="-1" aria-labelledby="closeCaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Close Case</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('cases.close_case', case_id=case.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Closing Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Close Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Transfer Case Modal -->
+{% if current_user.role == 'doctor' and current_user.doctor.id == case.doctor_id %}
+<div class="modal fade" id="transferCaseModal" tabindex="-1" aria-labelledby="transferCaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Transfer Case</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('cases.transfer_case', case_id=case.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="new_doctor_id" class="form-label">Select Doctor</label>
+                        <select class="form-select" id="new_doctor_id" name="new_doctor_id" required>
+                            <option value="">Choose a doctor...</option>
+                            {% for doctor in doctors %}
+                                {% if doctor.id != case.doctor_id %}
+                                    <option value="{{ doctor.id }}">Dr. {{ doctor.user.name }} ({{ doctor.specialization }})</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="transfer_notes" class="form-label">Transfer Notes</label>
+                        <textarea class="form-control" id="transfer_notes" name="transfer_notes" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Transfer Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Feedback Modal -->
+{% if current_user.role == 'patient' and current_user.id == case.patient_id and not case.feedback_rating %}
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Provide Feedback</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('cases.submit_feedback', case_id=case.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Rating</label>
+                        <div class="rating">
+                            {% for i in range(5, 0, -1) %}
+                                <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}" required>
+                                <label for="star{{ i }}"><i class="fas fa-star"></i></label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="feedback_text" class="form-label">Comments</label>
+                        <textarea class="form-control" id="feedback_text" name="feedback_text" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+.rating input {
+    display: none;
+}
+
+.rating label {
+    cursor: pointer;
+    padding: 5px;
+    color: #ddd;
+}
+
+.rating label:hover,
+.rating label:hover ~ label,
+.rating input:checked ~ label {
+    color: #ffd700;
+}
+
+.document-viewer {
+    min-height: 300px;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+.document-viewer iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+}
+
+.document-viewer img {
+    max-height: 300px;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+}
+</style>
+
+<!-- Add PDF.js viewer -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+</script>
+
+{% block extra_js %}
+<script>
+// Initialize modals
+document.addEventListener('DOMContentLoaded', function() {
+    // Close Case Modal Handling
+    const closeCaseModal = document.getElementById('closeCaseModal');
+    if (closeCaseModal) {
+        const modal = new bootstrap.Modal(closeCaseModal);
+        const form = document.getElementById('closeCaseForm');
+
+        // Close button handler
+        const closeButtons = closeCaseModal.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                modal.hide();
+            });
+        });
+
+        // Form submission
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (!this.checkValidity()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                this.classList.add('was-validated');
+            });
+        }
+
+        // Reset form on modal close
+        closeCaseModal.addEventListener('hidden.bs.modal', function() {
+            if (form) {
+                form.reset();
+                form.classList.remove('was-validated');
+            }
+        });
+
+        // Close on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && closeCaseModal.classList.contains('show')) {
+                modal.hide();
+            }
+        });
+
+        // Close on backdrop click
+        closeCaseModal.addEventListener('click', function(e) {
+            if (e.target === closeCaseModal) {
+                modal.hide();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock content %} 
