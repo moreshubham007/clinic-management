@@ -37,7 +37,7 @@ A comprehensive Flask application for managing clinic appointments, patient case
 
 1. Clone the repository:
 ```bash
-git clone [<repository-url>](https://github.com/moreshubham007/clinic-management.git
+git clone https://github.com/moreshubham007/clinic-management.git
 cd clinic-management
 ```
 
