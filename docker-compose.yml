@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb-clinic
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: clinic_db
+      MYSQL_USER: hospital
+      MYSQL_PASSWORD: hospital123
+    ports:
+      - "3306:3306"
+    networks:
+      - clinic-network
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    restart: always
+
+  flask-app:
+    build: .
+    container_name: flask-clinic-app
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: mysql://hospital:hospital123@192.168.0.104/clinic_db
+      DATABASE_HOST: 192.168.0.104
+      DATABASE_USER: hospital
+      DATABASE_PASSWORD: hospital123
+      DATABASE_NAME: clinic_db
+    depends_on:
+      - mariadb
+    networks:
+      - clinic-network
+    restart: always
+
+networks:
+  clinic-network:
+    driver: bridge
+
+volumes:
+  mariadb-data:
+    driver: local 

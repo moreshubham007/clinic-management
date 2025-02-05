@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hospital App</string>
+    <string name="title_appointments">Appointments</string>
+    <string name="title_cases">Medical Cases</string>
+    <string name="title_profile">Profile</string>
+    <string name="login">Login</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="logout">Logout</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+
+    <!-- Appointments -->
+    <string name="no_appointments">No appointments</string>
+    <string name="no_appointments_found">No appointments found</string>
+    <string name="no_appointments_description">Your upcoming appointments will appear here</string>
+    <string name="no_scheduled_appointments">No scheduled appointments</string>
+    <string name="no_completed_appointments">No completed appointments</string>
+    <string name="no_cancelled_appointments">No cancelled appointments</string>
+    <string name="book_appointment">Book Appointment</string>
+    <string name="filter_all">All</string>
+    <string name="filter_scheduled">Scheduled</string>
+    <string name="filter_completed">Completed</string>
+    <string name="filter_cancelled">Cancelled</string>
+
+    <!-- Common -->
+    <string name="retry">Retry</string>
+    <string name="error_network">No internet connection. Please check your network.</string>
+    <string name="error_session_expired">Session expired. Please login again.</string>
+    <string name="error_permission">You don\'t have permission to perform this action.</string>
+    <string name="error_unknown">An unknown error occurred. Please try again.</string>
+</resources>

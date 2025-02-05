@@ -87,7 +87,7 @@ flask db upgrade
 ```bash
 flask create-admin
 flask create-admin EMAIL NAME
-flask create-admin admin@example.com "Admin User"
+  flask create-admin admin@example.com "Admin User"
 ```
 
 8. Run the application:

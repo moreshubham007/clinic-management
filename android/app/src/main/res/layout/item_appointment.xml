@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/doctorIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_person"
+            android:tint="?colorPrimary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:contentDescription="Doctor" />
+
+        <TextView
+            android:id="@+id/doctorName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@+id/appointmentStatus"
+            app:layout_constraintStart_toEndOf="@+id/doctorIcon"
+            app:layout_constraintTop_toTopOf="@+id/doctorIcon"
+            tools:text="Dr. John Doe" />
+
+        <TextView
+            android:id="@+id/doctorSpecialization"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:textColor="?android:textColorSecondary"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toStartOf="@+id/appointmentStatus"
+            app:layout_constraintStart_toStartOf="@+id/doctorName"
+            app:layout_constraintTop_toBottomOf="@+id/doctorName"
+            tools:text="Cardiologist" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/appointmentStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Scheduled" />
+
+        <View
+            android:id="@+id/divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:background="?android:dividerHorizontal"
+            app:layout_constraintTop_toBottomOf="@+id/doctorIcon" />
+
+        <ImageView
+            android:id="@+id/timeIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginTop="16dp"
+            android:src="@drawable/ic_calendar"
+            android:tint="?android:textColorSecondary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/divider"
+            android:contentDescription="Date and Time" />
+
+        <TextView
+            android:id="@+id/appointmentDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="?android:textColorSecondary"
+            app:layout_constraintBottom_toBottomOf="@+id/timeIcon"
+            app:layout_constraintStart_toEndOf="@+id/timeIcon"
+            app:layout_constraintTop_toTopOf="@+id/timeIcon"
+            tools:text="2024-03-15 10:30" />
+
+        <TextView
+            android:id="@+id/appointmentNotes"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="?android:textColorSecondary"
+            android:visibility="gone"
+            tools:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/timeIcon"
+            tools:text="Regular checkup" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView> 

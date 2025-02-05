@@ -1,16 +1,18 @@
 import os
 import json
 import requests as http_requests
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from oauthlib.oauth2 import WebApplicationClient
-from app import db
+from app import db, csrf
 from models import User, Doctor
 from functools import wraps
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField
 from wtforms.validators import DataRequired, Email
+import jwt
+import datetime
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -30,6 +32,59 @@ class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
+
+@auth_bp.route('/api/login', methods=['POST'])
+@csrf.exempt  # Disable CSRF for API endpoint
+def api_login():
+    try:
+        # Log incoming request
+        current_app.logger.info("Received login request")
+        
+        # Get and validate JSON data
+        data = request.get_json()
+        current_app.logger.debug(f"Request data: {data}")
+        
+        if not data:
+            current_app.logger.error("No JSON data received")
+            return jsonify({'error': 'No data provided'}), 400
+        
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            current_app.logger.error("Missing email or password")
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        # Find user
+        user = User.query.filter_by(email=email).first()
+        current_app.logger.debug(f"User found: {user is not None}")
+        
+        if user and check_password_hash(user.password_hash, password):
+            # Generate JWT token
+            token = jwt.encode({
+                'user_id': user.id,
+                'email': user.email,
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
+            }, current_app.config['SECRET_KEY'], algorithm='HS256')
+            
+            current_app.logger.info(f"Login successful for user: {email}")
+            
+            return jsonify({
+                'token': token,
+                'user': {
+                    'id': user.id,
+                    'name': user.name,
+                    'email': user.email,
+                    'patient_number': user.patient_number
+                }
+            }), 200
+        
+        current_app.logger.warning(f"Invalid login attempt for email: {email}")
+        return jsonify({'error': 'Invalid email or password'}), 401
+    
+    except Exception as e:
+        current_app.logger.error(f"Login error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():

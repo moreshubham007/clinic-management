@@ -68,20 +68,15 @@ def manage_users():
         )
     
     # Execute query with pagination
-    pagination = query.order_by(User.created_at.desc()).paginate(
+    users = query.order_by(User.created_at.desc()).paginate(
         page=page, 
         per_page=per_page,
         error_out=False
     )
     
-    # Get total count for display
-    total_users = query.count()
-    
     return render_template(
         'admin/users.html',
-        users=pagination.items,
-        pagination=pagination,
-        total_users=total_users,
+        users=users,
         per_page=per_page
     )
 
@@ -206,6 +201,9 @@ def create_user():
 @admin_required
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
+    doctor = None
+    if user.role == 'doctor':
+        doctor = Doctor.query.filter_by(user_id=user.id).first()
     
     if request.method == 'POST':
         try:
@@ -218,7 +216,7 @@ def edit_user(user_id):
             # Handle password change if provided
             password = request.form.get('password')
             if password:
-                user.password_hash = generate_password_hash(password)
+                user.set_password(password)
             
             # Handle patient-specific fields
             if new_role == 'patient':
@@ -241,51 +239,35 @@ def edit_user(user_id):
                     flash('Specialization is required for doctors', 'danger')
                     return redirect(url_for('admin.edit_user', user_id=user_id))
 
-                if not user.doctor:
+                if not doctor:
                     doctor = Doctor(user_id=user.id)
                     db.session.add(doctor)
-                else:
-                    doctor = user.doctor
                 
                 doctor.specialization = request.form.get('specialization')
                 
+                # Handle availability schedule
                 try:
-                    # Get the availability data and checked days
                     availability_data = request.form.get('availability', '{}')
                     checked_days = request.form.getlist('day_enabled[]')
                     
-                    # Parse the availability data
                     availability = json.loads(availability_data) if availability_data else {}
                     
-                    # Initialize all days with empty lists
                     all_days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
                     final_availability = {day: [] for day in all_days}
                     
-                    # Process each day
                     for day in all_days:
                         if day in checked_days:
-                            # If day is checked, keep its slots from the availability data
                             if day in availability and isinstance(availability[day], list):
                                 final_availability[day] = availability[day]
-                        else:
-                            # If day is unchecked, set empty list
-                            final_availability[day] = []
                     
-                    # Print debug information
-                    print(f"Checked days: {checked_days}")
-                    print(f"Availability data: {availability}")
-                    print(f"Final availability: {final_availability}")
-                    
-                    # Set the availability
                     doctor.availability = final_availability
                     
                 except json.JSONDecodeError as e:
-                    print(f"JSON Decode Error: {str(e)}")
-                    print(f"Raw availability data: {availability_data}")
-                    flash(f'Error processing availability schedule: Invalid JSON format', 'danger')
+                    current_app.logger.error(f"JSON Decode Error: {str(e)}")
+                    flash('Error processing availability schedule: Invalid format', 'danger')
                     return redirect(url_for('admin.edit_user', user_id=user_id))
                 except Exception as e:
-                    print(f"General Error: {str(e)}")
+                    current_app.logger.error(f"Error updating availability: {str(e)}")
                     flash(f'Error updating availability schedule: {str(e)}', 'danger')
                     return redirect(url_for('admin.edit_user', user_id=user_id))
             
@@ -298,10 +280,30 @@ def edit_user(user_id):
             
         except Exception as e:
             db.session.rollback()
+            current_app.logger.error(f"Error updating user: {str(e)}")
             flash(f'Error updating user: {str(e)}', 'danger')
             return redirect(url_for('admin.edit_user', user_id=user_id))
     
-    return render_template('admin/edit_user.html', user=user)
+    # For GET request, prepare form data
+    form_data = {
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'role': user.role,
+        'is_active': user.is_active,
+        'patient_number': user.patient_number if hasattr(user, 'patient_number') else None,
+        'mobile_number': user.mobile_number if hasattr(user, 'mobile_number') else None,
+        'aadhar_number': user.aadhar_number if hasattr(user, 'aadhar_number') else None,
+        'address': user.address if hasattr(user, 'address') else None,
+        'state': user.state if hasattr(user, 'state') else None,
+        'city': user.city if hasattr(user, 'city') else None,
+        'pin_code': user.pin_code if hasattr(user, 'pin_code') else None,
+        'date_of_birth': user.date_of_birth.strftime('%Y-%m-%d') if hasattr(user, 'date_of_birth') and user.date_of_birth else None,
+        'specialization': doctor.specialization if doctor else None,
+        'availability': doctor.availability if doctor else None
+    }
+    
+    return render_template('admin/edit_user.html', user=user, form_data=form_data)
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
