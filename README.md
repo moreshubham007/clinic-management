@@ -37,7 +37,7 @@ A comprehensive Flask application for managing clinic appointments, patient case
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/moreshubham007/clinic-management.git
 cd clinic-management
 ```
 
@@ -87,7 +87,7 @@ flask db upgrade
 ```bash
 flask create-admin
 flask create-admin EMAIL NAME
-  flask create-admin admin@example.com "Admin User"
+flask create-admin admin@example.com "Admin User"
 ```
 
 8. Run the application:
