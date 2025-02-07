@@ -20,6 +20,7 @@
                     <select class="form-select" id="role" name="role">
                         <option value="">All Roles</option>
                         <option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option>
+                        <option value="receptionist" {% if form_data and form_data.role == 'receptionist' %}selected{% endif %}>Receptionist</option>
                         <option value="doctor" {% if request.args.get('role') == 'doctor' %}selected{% endif %}>Doctor</option>
                         <option value="patient" {% if request.args.get('role') == 'patient' %}selected{% endif %}>Patient</option>
                     </select>

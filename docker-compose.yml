@@ -1,44 +1,57 @@
 version: '3.8'
 
 services:
-  mariadb:
-    image: mariadb:latest
-    container_name: mariadb-clinic
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: clinic_db
-      MYSQL_USER: hospital
-      MYSQL_PASSWORD: hospital123
-    ports:
-      - "3306:3306"
-    networks:
-      - clinic-network
-    volumes:
-      - mariadb-data:/var/lib/mysql
+  flask_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hospital_app
     restart: always
-
-  flask-app:
-    build: .
-    container_name: flask-clinic-app
     ports:
       - "5000:5000"
     environment:
-      FLASK_ENV: development
-      DATABASE_URL: mysql://hospital:hospital123@192.168.0.104/clinic_db
-      DATABASE_HOST: 192.168.0.104
-      DATABASE_USER: hospital
-      DATABASE_PASSWORD: hospital123
-      DATABASE_NAME: clinic_db
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - DATABASE_URL=mysql://hospital:hospital123@hospital_db/clinic_db
+      - SECRET_KEY=xwe132mk3nr4no3i4rin
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USE_TLS=${MAIL_USE_TLS}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+    volumes:
+      - ./:/app
+      - ./data/uploads:/app/uploads
     depends_on:
-      - mariadb
-    networks:
-      - clinic-network
-    restart: always
+      - mysql_db
 
-networks:
-  clinic-network:
-    driver: bridge
+  mysql_db:
+    image: mysql:8.0
+    container_name: hospital_db
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=clinic_db
+      - MYSQL_USER=hospital
+      - MYSQL_PASSWORD=hospital123
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
-  mariadb-data:
-    driver: local 
+  mysql_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/mysql
+  uploads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/uploads 
