@@ -399,6 +399,9 @@
         }
     </style>
     {% block extra_css %}{% endblock %}
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 </head>
 <body>
     <div class="app-container">
@@ -610,6 +613,27 @@
                 }
             });
         });
+
+        // Force page reload on back/forward navigation
+        (function() {
+            window.addEventListener('pageshow', function(event) {
+                // If navigated to via browser history (back/forward)
+                if (event.persisted || 
+                    (window.performance && window.performance.navigation.type === 2)) {
+                    // Reload the page
+                    window.location.reload();
+                }
+            });
+            
+            // Add state to browser history to ensure pageshow events fire correctly
+            window.addEventListener('DOMContentLoaded', function() {
+                if (window.history && window.history.replaceState) {
+                    const currentUrl = window.location.href;
+                    const timestamp = new Date().getTime();
+                    window.history.replaceState({ timestamp: timestamp }, document.title, currentUrl);
+                }
+            });
+        })();
     </script>
     {% block extra_js %}{% endblock %}
 </body>

@@ -9,6 +9,7 @@ import click
 from datetime import timedelta
 from urllib.parse import urlencode
 from flask_cors import CORS
+from flask_caching import Cache
 
 # Load environment variables
 load_dotenv()
@@ -43,6 +44,12 @@ app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
+# Add these settings to your app config
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+
 # Initialize extensions
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -68,6 +75,12 @@ ROLE_PATIENT = 'patient'
 
 # Import models after db initialization
 from models import User, Doctor
+
+# If you're using Flask-Caching or similar, configure it to exclude admin routes
+cache = Cache(app, config={
+    'CACHE_TYPE': 'simple',
+    'CACHE_DEFAULT_TIMEOUT': 300
+})
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -167,7 +180,29 @@ app.jinja_env.globals.update(
     min=min
 )
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+@app.after_request
+def add_cache_control_headers(response):
+    """Add cache control headers to prevent browser caching"""
+    if request.blueprint == 'admin' or request.blueprint == 'dashboard':
+        # For admin and dashboard pages, strictly disable caching
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    else:
+        # For other pages, we can use a more relaxed policy
+        response.headers["Cache-Control"] = "private, no-cache, max-age=0"
+        
+    # Add Vary header to respect HTTP headers in cache
+    response.headers["Vary"] = "Cookie, Authorization"
+    
+    return response
+
+# Don't cache admin routes
+@cache.cached(unless=lambda: request.blueprint == 'admin')
+def my_cached_route():
+    # ...
+
+    if __name__ == '__main__':
+        with app.app_context():
+            db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000) 
