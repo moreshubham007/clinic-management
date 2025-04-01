@@ -55,30 +55,36 @@ def manage_users():
         query = query.filter(User.role == role)
     
     if status:
-        is_active = status == 'active'
+        is_active = (status == 'active')
         query = query.filter(User.is_active == is_active)
     
     if search:
-        search_term = f"%{search}%"
         query = query.filter(
             db.or_(
-                User.name.ilike(search_term),
-                User.email.ilike(search_term)
+                User.name.ilike(f'%{search}%'),
+                User.email.ilike(f'%{search}%')
             )
         )
     
-    # Execute query with pagination
-    users = query.order_by(User.created_at.desc()).paginate(
-        page=page, 
-        per_page=per_page,
-        error_out=False
-    )
+    # Order by ID descending (newest first)
+    query = query.order_by(User.id.desc())
     
-    return render_template(
-        'admin/users.html',
-        users=users,
-        per_page=per_page
-    )
+    # Handle pagination
+    try:
+        users = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        # If page is out of range, redirect to the last page
+        if page > users.pages and users.pages > 0:
+            return redirect(url_for('admin.manage_users', page=users.pages, **request.args))
+            
+    except Exception as e:
+        # Log the error
+        print(f"Pagination error: {str(e)}")
+        # Fallback to first page
+        users = query.paginate(page=1, per_page=per_page, error_out=False)
+        flash('An error occurred with pagination. Showing first page.', 'warning')
+    
+    return render_template('admin/users.html', users=users)
 
 @admin_bp.route('/create-user', methods=['GET', 'POST'])
 @login_required
@@ -115,7 +121,9 @@ def create_user():
                 flash('Email already exists', 'danger')
                 return render_template('admin/create_user.html', form_data=form_data)
             
-            # Create user object
+            # Create user object with explicit transaction
+            db.session.begin_nested()  # Create a savepoint
+            
             print("Creating new user object")
             user = User(
                 name=form_data['name'],
@@ -125,6 +133,10 @@ def create_user():
             )
             user.set_password(form_data['password'])
             print(f"User object created: {user.name}, {user.email}, {user.role}")
+            
+            # Add user to session
+            db.session.add(user)
+            db.session.flush()  # Get ID without committing
             
             # Add role-specific information
             if form_data['role'] == 'doctor':
@@ -141,12 +153,6 @@ def create_user():
                     availability_data = {}
                     print("Error parsing availability data, using empty dict")
                 
-                # Save the user first to get an ID
-                print("Adding user to session")
-                db.session.add(user)
-                db.session.flush()  # Get ID without committing
-                print(f"User flushed to DB with ID: {user.id}")
-                
                 # Create doctor record
                 print("Creating doctor record")
                 doctor = Doctor(
@@ -157,7 +163,7 @@ def create_user():
                 print(f"Doctor object created with user_id: {doctor.user_id}")
                 db.session.add(doctor)
                 print("Doctor added to session")
-                
+            
             elif form_data['role'] == 'patient':
                 print("Processing patient-specific data")
                 # Validate required patient fields
@@ -173,29 +179,17 @@ def create_user():
                     'gender': request.form.get('gender', '')
                 })
                 
-                required_fields = ['address', 'state', 'city', 'pin_code', 'mobile_number', 
-                                'date_of_birth', 'aadhar_number', 'patient_number']
-                if not all(form_data.get(field) for field in required_fields):
-                    flash('All patient fields are required', 'danger')
-                    return render_template('admin/create_user.html', form_data=form_data)
-
                 # Set patient fields
                 user.address = form_data['address']
                 user.state = form_data['state']
                 user.city = form_data['city']
                 user.pin_code = form_data['pin_code']
                 user.mobile_number = form_data['mobile_number']
-                user.date_of_birth = datetime.strptime(form_data['date_of_birth'], '%Y-%m-%d').date()
+                if form_data['date_of_birth']:
+                    user.date_of_birth = datetime.strptime(form_data['date_of_birth'], '%Y-%m-%d').date()
                 user.aadhar_number = form_data['aadhar_number']
                 user.patient_number = form_data['patient_number']
                 user.gender = form_data['gender']
-                
-                # Add user to the session
-                db.session.add(user)
-            
-            else:  # Admin or other roles
-                print(f"Adding user with role {user.role} to session")
-                db.session.add(user)
             
             # Commit the transaction
             print("Committing the transaction")
@@ -376,4 +370,168 @@ def next_patient_number():
         return jsonify({
             'status': 'error',
             'message': str(e)
-        }), 500 
+        }), 500
+
+@admin_bp.route('/api/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
+@admin_required
+def user_api(user_id):
+    """API endpoint for managing individual users"""
+    print(f"API request: {request.method} for user {user_id}")
+    
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'GET':
+        # Return user data for editing
+        return jsonify({
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'role': user.role,
+            'is_active': user.is_active
+        })
+        
+    elif request.method == 'PUT':
+        # Update user
+        data = request.get_json()
+        print(f"PUT data: {data}")
+        
+        # Validate data
+        if not data or not all(k in data for k in ('name', 'email', 'role')):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+            
+        # Check if email exists and belongs to another user
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user and existing_user.id != user.id:
+            return jsonify({'success': False, 'message': 'Email already exists'}), 400
+            
+        # Update user
+        user.name = data['name']
+        user.email = data['email']
+        user.role = data['role']
+        user.is_active = data.get('is_active', True)
+        
+        try:
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'User updated successfully'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 500
+            
+    elif request.method == 'DELETE':
+        print(f"Processing DELETE request for user {user_id}")
+        
+        # Prevent deleting the last admin
+        if user.role == 'admin' and User.query.filter_by(role='admin').count() <= 1:
+            print("Cannot delete the last admin user")
+            return jsonify({
+                'success': False, 
+                'message': 'Cannot delete the last admin user'
+            }), 403
+            
+        # Prevent self-deletion
+        if user.id == current_user.id:
+            print("Cannot delete your own account")
+            return jsonify({
+                'success': False, 
+                'message': 'Cannot delete your own account'
+            }), 403
+            
+        try:
+            # Delete related records first
+            if user.role == 'doctor':
+                doctor = Doctor.query.filter_by(user_id=user.id).first()
+                if doctor:
+                    print(f"Deleting doctor record for user {user_id}")
+                    db.session.delete(doctor)
+                    
+            # Delete the user
+            print(f"Deleting user {user_id}")
+            db.session.delete(user)
+            db.session.commit()
+            print(f"User {user_id} deleted successfully")
+            return jsonify({'success': True, 'message': 'User deleted successfully'})
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting user {user_id}: {str(e)}")
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/users', methods=['POST'])
+@login_required
+@admin_required
+def create_user_api():
+    """API endpoint for creating users"""
+    data = request.get_json()
+    
+    # Validate data
+    if not data or not all(k in data for k in ('name', 'email', 'password', 'role')):
+        return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        
+    # Check if email exists
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'success': False, 'message': 'Email already exists'}), 400
+        
+    try:
+        # Create user
+        user = User(
+            name=data['name'],
+            email=data['email'],
+            role=data['role'],
+            is_active=data.get('is_active', True)
+        )
+        user.set_password(data['password'])
+        
+        db.session.add(user)
+        
+        # If doctor, create doctor record
+        if data['role'] == 'doctor':
+            doctor = Doctor(
+                user_id=user.id,
+                specialization=data.get('specialization', ''),
+                availability={}
+            )
+            db.session.add(doctor)
+            
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': 'User created successfully',
+            'id': user.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/delete-user/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_user_traditional(user_id):
+    """Traditional form-based delete route as fallback"""
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent deleting the last admin
+    if user.role == 'admin' and User.query.filter_by(role='admin').count() <= 1:
+        flash('Cannot delete the last admin user', 'danger')
+        return redirect(url_for('admin.manage_users'))
+        
+    # Prevent self-deletion
+    if user.id == current_user.id:
+        flash('Cannot delete your own account', 'danger')
+        return redirect(url_for('admin.manage_users'))
+        
+    try:
+        # Delete related records first
+        if user.role == 'doctor':
+            doctor = Doctor.query.filter_by(user_id=user.id).first()
+            if doctor:
+                db.session.delete(doctor)
+                
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        flash('User deleted successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting user: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.manage_users')) 

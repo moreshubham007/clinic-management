@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Import db directly if it's defined elsewhere
 try:
@@ -42,13 +43,9 @@ class User(UserMixin, db.Model):
                                   foreign_keys='Feedback.patient_id')
 
     def set_password(self, password):
-        """Set the password hash for the user."""
-        from werkzeug.security import generate_password_hash
         self.password_hash = generate_password_hash(password)
-
+        
     def check_password(self, password):
-        """Check if the provided password matches the hash."""
-        from werkzeug.security import check_password_hash
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):

@@ -70,6 +70,9 @@ mail = Mail(app)
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 csrf = CSRFProtect(app)
 
+# Exempt API routes from CSRF protection if needed
+csrf.exempt('admin.user_api')
+
 # User roles
 ROLE_ADMIN = 'admin'
 ROLE_DOCTOR = 'doctor'
@@ -126,6 +129,9 @@ def not_found_error(error):
 
 @app.errorhandler(500)
 def internal_error(error):
+    app.logger.error(f"500 error: {str(error)}")
+    import traceback
+    app.logger.error(traceback.format_exc())
     db.session.rollback()
     return render_template('errors/500.html'), 500
 
@@ -218,23 +224,16 @@ def after_request(response):
     print(f"Completed request: {request.method} {request.path} - Status: {response.status_code}")
     return response
 
-# Add better debug configuration
-import logging
-from logging.handlers import RotatingFileHandler
-import os
-
-# Ensure logs directory exists
+# Configure logging
 if not os.path.exists('logs'):
     os.mkdir('logs')
-
-# Set up file logging
+    
 file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
 file_handler.setFormatter(logging.Formatter(
     '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
 ))
 file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
-
 app.logger.setLevel(logging.INFO)
 app.logger.info('Application startup')
 

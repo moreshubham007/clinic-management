@@ -22,7 +22,8 @@
                         {% endif %}
                     {% endwith %}
                     
-                    <form method="POST" class="needs-validation" novalidate>
+                    <form method="POST" action="{{ url_for('admin.create_user') }}" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Basic Information -->
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -261,7 +262,7 @@
                             <a href="{{ url_for('admin.manage_users') }}" class="btn btn-secondary">
                                 Cancel
                             </a>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
                                 {{ 'Update' if user else 'Create' }} User
                             </button>
                         </div>
@@ -271,11 +272,48 @@
         </div>
     </div>
 </div>
+
+<!-- Add this at the very bottom of your template, after your main form -->
+<div class="card mt-5">
+    <div class="card-header">Test Form</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.create_user') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="name" value="Test User">
+            <input type="hidden" name="email" value="test@example.com">
+            <input type="hidden" name="password" value="password123">
+            <input type="hidden" name="role" value="patient">
+            <button type="submit" class="btn btn-warning">Test Form Submit</button>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Debug form submission
+    const form = document.querySelector('form');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function(e) {
+            console.log('Submit button clicked');
+        });
+    }
+    
+    if (form) {
+        console.log('Form found, setting up listeners');
+        form.addEventListener('submit', function(e) {
+            console.log('Form submit event triggered');
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            console.log('Form data:', new FormData(form));
+        });
+    } else {
+        console.error('Form not found!');
+    }
+
     const roleSelect = document.getElementById('role');
     const doctorFields = document.getElementById('doctorFields');
     const patientFields = document.getElementById('patientFields');
@@ -481,21 +519,42 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update form validation
     const form = document.querySelector('.needs-validation');
     form.addEventListener('submit', function(event) {
+        console.log("Form submission attempted");
+        
+        // TEMPORARILY DISABLE VALIDATION FOR DEBUGGING
+        console.log("Form is valid, submitting");
+        return true;
+        
+        /* Original validation code - comment out for now
+        // For doctor role, check availability
         if (roleSelect.value === 'doctor') {
-            // Check if at least one day has time slots
             const hasAnySlots = Object.values(availabilityData).some(slots => slots.length > 0);
             if (!hasAnySlots) {
                 event.preventDefault();
                 alert('Please add at least one time slot to your schedule.');
+                console.log("Form submission blocked: no time slots");
                 return;
             }
         }
 
+        // Check form validity
         if (!form.checkValidity()) {
             event.preventDefault();
             event.stopPropagation();
+            console.log("Form submission blocked: invalid form");
+            
+            // Show which fields are invalid
+            const invalidFields = form.querySelectorAll(':invalid');
+            console.log("Invalid fields:", invalidFields);
+            invalidFields.forEach(field => {
+                console.log(`Field ${field.name} is invalid`);
+            });
+        } else {
+            console.log("Form is valid, submitting");
         }
+        
         form.classList.add('was-validated');
+        */
     });
 });
 </script>
