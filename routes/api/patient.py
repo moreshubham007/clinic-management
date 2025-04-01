@@ -8,7 +8,7 @@ import jwt
 import os
 from werkzeug.security import check_password_hash
 
-patient_api = Blueprint('patient_api', __name__)
+patient_api_bp = Blueprint('patient_api', __name__)
 
 def token_required(f):
     @wraps(f)
@@ -35,7 +35,7 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
-@patient_api.route('/api/patient/login', methods=['POST'])
+@patient_api_bp.route('/patient/login', methods=['POST'])
 def login():
     """
     Patient Login API
@@ -77,25 +77,29 @@ def login():
       401:
         description: Invalid credentials
     """
-    auth = request.get_json()
-    if not auth or not auth.get('email') or not auth.get('password'):
-        return jsonify({'message': 'Missing credentials'}), 401
-
-    user = User.query.filter_by(email=auth.get('email')).first()
-    if not user or not check_password_hash(user.password_hash, auth.get('password')):
+    data = request.get_json()
+    
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'message': 'Missing email or password'}), 400
+        
+    user = User.query.filter_by(email=data.get('email')).first()
+    
+    if not user or not user.check_password(data.get('password')):
         return jsonify({'message': 'Invalid credentials'}), 401
-
+        
     if user.role != 'patient':
-        return jsonify({'message': 'Not authorized as patient'}), 401
-
-    # Generate JWT token
+        return jsonify({'message': 'Not a patient account'}), 403
+        
+    if not user.is_active:
+        return jsonify({'message': 'Account is disabled'}), 403
+    
+    # Generate token
+    secret_key = os.getenv('SECRET_KEY', 'default-secret-key')
     token = jwt.encode({
         'user_id': user.id,
-        'email': user.email,
-        'role': user.role,
-        'exp': datetime.utcnow() + timedelta(days=7)  # Token expires in 7 days
-    }, os.getenv('SECRET_KEY'), algorithm="HS256")
-
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    }, secret_key, algorithm="HS256")
+    
     return jsonify({
         'token': token,
         'user': {
@@ -104,9 +108,9 @@ def login():
             'email': user.email,
             'patient_number': user.patient_number
         }
-    })
+    }), 200
 
-@patient_api.route('/api/patient/profile', methods=['GET'])
+@patient_api_bp.route('/patient/profile', methods=['GET'])
 @token_required
 def get_profile(current_user):
     """
@@ -157,9 +161,9 @@ def get_profile(current_user):
         'city': current_user.city,
         'state': current_user.state,
         'pin_code': current_user.pin_code
-    })
+    }), 200
 
-@patient_api.route('/api/patient/appointments', methods=['GET'])
+@patient_api_bp.route('/api/patient/appointments', methods=['GET'])
 @token_required
 def get_appointments(current_user):
     """
@@ -218,7 +222,7 @@ def get_appointments(current_user):
         'notes': apt.notes
     } for apt in appointments])
 
-@patient_api.route('/api/patient/cases', methods=['GET'])
+@patient_api_bp.route('/api/patient/cases', methods=['GET'])
 @token_required
 def get_cases(current_user):
     """
@@ -271,7 +275,7 @@ def get_cases(current_user):
         'status': case.status
     } for case in cases])
 
-@patient_api.route('/api/patient/questions', methods=['GET', 'POST'])
+@patient_api_bp.route('/api/patient/questions', methods=['GET', 'POST'])
 @token_required
 def questions(current_user):
     """
@@ -365,7 +369,7 @@ def questions(current_user):
             'id': question.id
         }), 201
 
-@patient_api.route('/api/patient/feedback', methods=['POST'])
+@patient_api_bp.route('/api/patient/feedback', methods=['POST'])
 @token_required
 def submit_feedback(current_user):
     """

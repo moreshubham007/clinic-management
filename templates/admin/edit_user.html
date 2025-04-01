@@ -103,17 +103,48 @@
                         <input type="text" class="form-control" id="specialization" name="specialization" value="{{ form_data.specialization }}">
                     </div>
                     <div class="col-12">
-                        <h6 class="mb-3">Availability Schedule</h6>
+                        <h5 class="mb-3">Weekly Availability</h5>
+                        <input type="hidden" id="availability" name="availability" value='{{ form_data.availability|tojson if form_data.availability else "{}" }}'>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Manage Time Slots</span>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="copyToAllDays">
+                                            <i class="fas fa-copy"></i> Copy to All Days
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" id="clearAll">
+                                            <i class="fas fa-trash-alt"></i> Clear All
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="row">
                             {% for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] %}
-                            <div class="col-md-3 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input day-checkbox" type="checkbox" 
-                                           id="day_{{ day }}" name="day_enabled[]" value="{{ day }}"
-                                           {% if form_data.availability and form_data.availability[day] %}checked{% endif %}>
-                                    <label class="form-check-label text-capitalize" for="day_{{ day }}">
-                                        {{ day }}
-                                    </label>
+                            <div class="col-md-6 mb-3">
+                                <div class="card availability-day" data-day="{{ day }}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="text-capitalize">{{ day }}</span>
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary add-slot" data-bs-toggle="modal" data-bs-target="#addSlotModal" data-day="{{ day }}">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary copy-day">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger clear-day">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="selected-slots">
+                                            <!-- Selected time slots will appear here -->
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             {% endfor %}
@@ -135,10 +166,64 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+<!-- Custom Time Slot Popup (outside the form) -->
+<div id="customTimeSlotPopup" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1050;">
+    <div style="background: white; width: 90%; max-width: 500px; margin: 100px auto; padding: 20px; border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h5>Add Time Slots for <span id="selectedDayDisplay" style="text-transform: capitalize;"></span></h5>
+            <button type="button" class="btn-close" id="closeTimeSlotPopup"></button>
+        </div>
+        
+        <div class="mb-3">
+            <label for="customSlotType" class="form-label">Slot Type</label>
+            <select class="form-select" id="customSlotType">
+                <option value="custom">Custom Time Range</option>
+                <option value="morning">Morning Shift (9:00 AM - 12:00 PM)</option>
+                <option value="afternoon">Afternoon Shift (1:00 PM - 5:00 PM)</option>
+                <option value="evening">Evening Shift (5:00 PM - 9:00 PM)</option>
+            </select>
+        </div>
+        
+        <div id="customTimeRangeFields">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="customStartTime" class="form-label">Start Time</label>
+                    <input type="time" class="form-control" id="customStartTime" value="09:00">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="customEndTime" class="form-label">End Time</label>
+                    <input type="time" class="form-control" id="customEndTime" value="17:00">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="customSlotInterval" class="form-label">Appointment Duration</label>
+                    <select class="form-select" id="customSlotInterval">
+                        <option value="15">15 minutes</option>
+                        <option value="30" selected>30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">60 minutes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+            <button type="button" class="btn btn-secondary" id="cancelTimeSlotPopup">Cancel</button>
+            <button type="button" class="btn btn-primary" id="saveTimeSlotPopup">Add Slots</button>
+        </div>
+    </div>
+</div>
+
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    roleSelect.addEventListener('change', function() {
+        toggleRoleFields(this.value);
+    });
+    
+    // Toggle fields function
 function toggleRoleFields(role) {
     const patientFields = document.getElementById('patientFields');
     const doctorFields = document.getElementById('doctorFields');
@@ -155,18 +240,235 @@ function toggleRoleFields(role) {
     }
 }
 
-// Form validation
-document.addEventListener('DOMContentLoaded', function() {
-    const forms = document.querySelectorAll('.needs-validation');
-    Array.from(forms).forEach(form => {
-        form.addEventListener('submit', event => {
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            form.classList.add('was-validated');
-        }, false);
+    // Time slot management - custom popup approach
+    const popup = document.getElementById('customTimeSlotPopup');
+    const selectedDayDisplay = document.getElementById('selectedDayDisplay');
+    const availabilityInput = document.getElementById('availability');
+    let selectedDay = '';
+    let availabilityData = {};
+    
+    // Parse availability data
+    try {
+        availabilityData = JSON.parse(availabilityInput.value || '{}');
+        console.log("Loaded availability data:", availabilityData);
+    } catch (e) {
+        console.error("Error parsing availability data:", e);
+        availabilityData = {};
+    }
+    
+    // Initialize days
+    ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
+        if (!availabilityData[day]) availabilityData[day] = [];
     });
+    
+    // Render existing time slots
+    renderAllTimeSlots();
+    
+    // Add slot buttons
+    document.querySelectorAll('.add-slot').forEach(button => {
+        button.addEventListener('click', function(e) {
+            // Prevent default (important to stop Bootstrap modal behavior)
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Get selected day and show popup
+            selectedDay = this.getAttribute('data-day');
+            selectedDayDisplay.textContent = selectedDay;
+            
+            // Reset form
+            document.getElementById('customSlotType').value = 'custom';
+            document.getElementById('customStartTime').value = '09:00';
+            document.getElementById('customEndTime').value = '17:00';
+            document.getElementById('customSlotInterval').value = '30';
+            
+            // Show popup
+            popup.style.display = 'block';
+            return false;
+        });
+    });
+    
+    // Slot type change
+    document.getElementById('customSlotType').addEventListener('change', function() {
+        if (this.value === 'morning') {
+            document.getElementById('customStartTime').value = '09:00';
+            document.getElementById('customEndTime').value = '12:00';
+        } else if (this.value === 'afternoon') {
+            document.getElementById('customStartTime').value = '13:00';
+            document.getElementById('customEndTime').value = '17:00';
+        } else if (this.value === 'evening') {
+            document.getElementById('customStartTime').value = '17:00';
+            document.getElementById('customEndTime').value = '21:00';
+        }
+    });
+    
+    // Close popup handlers
+    document.getElementById('closeTimeSlotPopup').addEventListener('click', function() {
+        popup.style.display = 'none';
+    });
+    
+    document.getElementById('cancelTimeSlotPopup').addEventListener('click', function() {
+        popup.style.display = 'none';
+    });
+    
+    // Save time slots
+    document.getElementById('saveTimeSlotPopup').addEventListener('click', function() {
+        if (!selectedDay) {
+            alert("No day selected!");
+            return;
+        }
+        
+        console.log("Adding slots for day:", selectedDay);
+        
+        // Get values
+        const startTime = document.getElementById('customStartTime').value;
+        const endTime = document.getElementById('customEndTime').value;
+        const slotInterval = parseInt(document.getElementById('customSlotInterval').value);
+        
+        // Validate
+        const startMinutes = timeToMinutes(startTime);
+        const endMinutes = timeToMinutes(endTime);
+        
+        if (startMinutes >= endMinutes) {
+            alert('End time must be after start time');
+            return;
+        }
+        
+        // Generate time slots
+        const timeSlots = [];
+        for (let time = startMinutes; time < endMinutes; time += slotInterval) {
+            timeSlots.push(minutesToTime(time));
+        }
+        
+        console.log("Generated time slots:", timeSlots);
+        
+        // Update data
+        availabilityData[selectedDay] = timeSlots;
+        availabilityInput.value = JSON.stringify(availabilityData);
+        
+        // Update UI
+        renderAllTimeSlots();
+        
+        // Close popup
+        popup.style.display = 'none';
+    });
+    
+    // Other buttons
+    document.getElementById('clearAll').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all time slots?')) {
+            Object.keys(availabilityData).forEach(day => {
+                availabilityData[day] = [];
+            });
+            renderAllTimeSlots();
+            availabilityInput.value = JSON.stringify(availabilityData);
+        }
+    });
+    
+    document.getElementById('copyToAllDays').addEventListener('click', function() {
+        const sourceDayData = Object.values(availabilityData).find(slots => slots.length > 0);
+        if (!sourceDayData) {
+            alert('Please set up at least one day\'s schedule to copy');
+            return;
+        }
+
+        Object.keys(availabilityData).forEach(day => {
+            availabilityData[day] = [...sourceDayData];
+        });
+        
+        renderAllTimeSlots();
+        availabilityInput.value = JSON.stringify(availabilityData);
+    });
+    
+    // Individual day buttons
+    document.querySelectorAll('.copy-day').forEach(button => {
+        button.addEventListener('click', function() {
+            const day = this.closest('.availability-day').dataset.day;
+            if (availabilityData[day].length === 0) {
+                alert('Please add some time slots to copy');
+                return;
+            }
+            localStorage.setItem('copiedSchedule', JSON.stringify(availabilityData[day]));
+            alert('Schedule copied! You can now paste it to other days.');
+        });
+    });
+    
+    document.querySelectorAll('.clear-day').forEach(button => {
+        button.addEventListener('click', function() {
+            const day = this.closest('.availability-day').dataset.day;
+            availabilityData[day] = [];
+            renderAllTimeSlots();
+            availabilityInput.value = JSON.stringify(availabilityData);
+        });
+    });
+    
+    // Helper functions
+    function renderAllTimeSlots() {
+        Object.keys(availabilityData).forEach(day => {
+            const slotsContainer = document.querySelector(`.availability-day[data-day="${day}"] .selected-slots`);
+            if (slotsContainer) {
+                slotsContainer.innerHTML = ''; // Clear existing slots
+                
+                availabilityData[day].forEach(slot => {
+                    const slotElement = document.createElement('div');
+                    slotElement.className = 'badge bg-primary me-2 mb-2 p-2';
+                    slotElement.innerHTML = `
+                        ${slot}
+                        <button type="button" class="btn-close btn-close-white ms-2" 
+                                style="font-size: 0.5em;" aria-label="Remove"></button>
+                    `;
+                    
+                    slotElement.querySelector('.btn-close').addEventListener('click', function() {
+                        // Remove from UI
+                        slotElement.remove();
+                        
+                        // Remove from data
+                        availabilityData[day] = availabilityData[day].filter(t => t !== slot);
+                        availabilityInput.value = JSON.stringify(availabilityData);
+                    });
+                    
+                    slotsContainer.appendChild(slotElement);
+                });
+            }
+        });
+    }
+    
+    function timeToMinutes(time) {
+        const [hours, minutes] = time.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+    
+    function minutesToTime(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
 });
 </script>
+
+<style>
+.selected-slots {
+    min-height: 38px;
+    padding: 5px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.btn-close {
+    padding: 0.25rem;
+    font-size: 0.5rem;
+}
+.availability-day {
+    border: 1px solid rgba(0,0,0,.125);
+}
+.availability-day .card-header {
+    background-color: #f8f9fa;
+}
+.time-slot {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin: 0.25rem;
+    background-color: #007bff;
+    color: white;
+    border-radius: 0.25rem;
+}
+</style>
 {% endblock %} 

@@ -85,89 +85,94 @@ def manage_users():
 @admin_required
 def create_user():
     form_data = {}
+    
     if request.method == 'POST':
+        print("Processing POST request to create user")
+        print(f"Form data received: {request.form}")
+        
         try:
-            # Get all form data
+            # Get form data
             form_data = {
-                'email': request.form.get('email'),
                 'name': request.form.get('name'),
-                'role': request.form.get('role'),
+                'email': request.form.get('email'),
                 'password': request.form.get('password'),
-                'specialization': request.form.get('specialization'),
-                'availability': request.form.get('availability'),
-                'address': request.form.get('address'),
-                'state': request.form.get('state'),
-                'city': request.form.get('city'),
-                'pin_code': request.form.get('pin_code'),
-                'mobile_number': request.form.get('mobile_number'),
-                'date_of_birth': request.form.get('date_of_birth'),
-                'aadhar_number': request.form.get('aadhar_number'),
-                'patient_number': request.form.get('patient_number')
+                'role': request.form.get('role'),
+                'is_active': bool(request.form.get('is_active', True)),
             }
-
-            # Validate required fields
-            if not all([form_data['email'], form_data['name'], form_data['role'], form_data['password']]):
-                flash('Email, name, role, and password are required', 'danger')
+            
+            print(f"Processed form data: {form_data}")
+            
+            # Basic validation
+            if not all([form_data['name'], form_data['email'], form_data['password'], form_data['role']]):
+                print("Validation failed: missing required fields")
+                flash('All basic fields are required', 'danger')
                 return render_template('admin/create_user.html', form_data=form_data)
-
-            # Check if user already exists
-            if User.query.filter_by(email=form_data['email']).first():
-                flash('Email already registered', 'danger')
+            
+            # Check if email exists
+            existing_user = User.query.filter_by(email=form_data['email']).first()
+            if existing_user:
+                print(f"Email already exists: {form_data['email']}")
+                flash('Email already exists', 'danger')
                 return render_template('admin/create_user.html', form_data=form_data)
-
-            # Create new user
+            
+            # Create user object
+            print("Creating new user object")
             user = User(
-                email=form_data['email'],
                 name=form_data['name'],
-                role=form_data['role']
+                email=form_data['email'],
+                role=form_data['role'],
+                is_active=form_data['is_active']
             )
             user.set_password(form_data['password'])
-
-            # Handle role-specific fields
+            print(f"User object created: {user.name}, {user.email}, {user.role}")
+            
+            # Add role-specific information
             if form_data['role'] == 'doctor':
-                if not form_data['specialization']:
-                    flash('Specialization is required for doctors', 'danger')
-                    return render_template('admin/create_user.html', form_data=form_data)
+                print("Processing doctor-specific data")
+                # Collect doctor data
+                form_data['specialization'] = request.form.get('specialization', '')
+                form_data['availability'] = request.form.get('availability', '{}')
                 
-                # Create doctor profile
-                doctor = Doctor(
-                    user=user,
-                    specialization=form_data['specialization']
-                )
-                
-                # Handle availability
+                # Process availability data
                 try:
-                    # Get the availability data and checked days
-                    availability_data = form_data.get('availability', '{}')
-                    checked_days = request.form.getlist('day_enabled[]')  # Get list of checked days
-                    
-                    # Parse the availability data
-                    availability = json.loads(availability_data) if availability_data else {}
-                    
-                    # Initialize all days
-                    all_days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-                    final_availability = {}
-                    
-                    # Process each day
-                    for day in all_days:
-                        if day in checked_days:
-                            # If day is checked, use its slots or empty list if no slots defined
-                            final_availability[day] = availability.get(day, [])
-                        else:
-                            # If day is unchecked, use empty list
-                            final_availability[day] = []
-                    
-                    doctor.availability = final_availability
-                    current_app.logger.info(f"Setting availability: {final_availability}")
-                    
-                except (json.JSONDecodeError, TypeError) as e:
-                    current_app.logger.error(f"Error processing availability: {str(e)}")
-                    doctor.availability = {day: [] for day in all_days}
+                    availability_data = json.loads(form_data['availability'])
+                    print(f"Parsed availability data: {availability_data}")
+                except json.JSONDecodeError:
+                    availability_data = {}
+                    print("Error parsing availability data, using empty dict")
                 
+                # Save the user first to get an ID
+                print("Adding user to session")
+                db.session.add(user)
+                db.session.flush()  # Get ID without committing
+                print(f"User flushed to DB with ID: {user.id}")
+                
+                # Create doctor record
+                print("Creating doctor record")
+                doctor = Doctor(
+                    user_id=user.id,
+                    specialization=form_data['specialization'],
+                    availability=availability_data
+                )
+                print(f"Doctor object created with user_id: {doctor.user_id}")
                 db.session.add(doctor)
-
+                print("Doctor added to session")
+                
             elif form_data['role'] == 'patient':
+                print("Processing patient-specific data")
                 # Validate required patient fields
+                form_data.update({
+                    'address': request.form.get('address', ''),
+                    'state': request.form.get('state', ''),
+                    'city': request.form.get('city', ''),
+                    'pin_code': request.form.get('pin_code', ''),
+                    'mobile_number': request.form.get('mobile_number', ''),
+                    'date_of_birth': request.form.get('date_of_birth', ''),
+                    'aadhar_number': request.form.get('aadhar_number', ''),
+                    'patient_number': request.form.get('patient_number', ''),
+                    'gender': request.form.get('gender', '')
+                })
+                
                 required_fields = ['address', 'state', 'city', 'pin_code', 'mobile_number', 
                                 'date_of_birth', 'aadhar_number', 'patient_number']
                 if not all(form_data.get(field) for field in required_fields):
@@ -183,20 +188,34 @@ def create_user():
                 user.date_of_birth = datetime.strptime(form_data['date_of_birth'], '%Y-%m-%d').date()
                 user.aadhar_number = form_data['aadhar_number']
                 user.patient_number = form_data['patient_number']
-
-            db.session.add(user)
+                user.gender = form_data['gender']
+                
+                # Add user to the session
+                db.session.add(user)
+            
+            else:  # Admin or other roles
+                print(f"Adding user with role {user.role} to session")
+                db.session.add(user)
+            
+            # Commit the transaction
+            print("Committing the transaction")
             db.session.commit()
+            print(f"User created successfully: {user.id}, {user.email}, {user.role}")
             flash(f'Successfully created {form_data["role"]}', 'success')
             return redirect(url_for('admin.manage_users'))
             
         except Exception as e:
             db.session.rollback()
+            print(f"ERROR creating user: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             flash(f'Error creating user: {str(e)}', 'danger')
             return render_template('admin/create_user.html', form_data=form_data)
 
+    print("GET request for create_user form")
     return render_template('admin/create_user.html', form_data=form_data)
 
-@admin_bp.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
+@admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def edit_user(user_id):
@@ -235,58 +254,37 @@ def edit_user(user_id):
             
             # Handle doctor-specific fields
             if new_role == 'doctor':
-                if not request.form.get('specialization'):
-                    flash('Specialization is required for doctors', 'danger')
-                    return redirect(url_for('admin.edit_user', user_id=user_id))
-
                 if not doctor:
                     doctor = Doctor(user_id=user.id)
                     db.session.add(doctor)
                 
-                doctor.specialization = request.form.get('specialization')
+                doctor.specialization = request.form.get('specialization', '')
                 
-                # Handle availability schedule
+                # Handle availability data
+                availability_json = request.form.get('availability', '{}')
+                print(f"Received availability data: {availability_json}")
+                
                 try:
-                    availability_data = request.form.get('availability', '{}')
-                    checked_days = request.form.getlist('day_enabled[]')
-                    
-                    availability = json.loads(availability_data) if availability_data else {}
-                    
-                    all_days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-                    final_availability = {day: [] for day in all_days}
-                    
-                    for day in all_days:
-                        if day in checked_days:
-                            if day in availability and isinstance(availability[day], list):
-                                final_availability[day] = availability[day]
-                    
-                    doctor.availability = final_availability
-                    
-                except json.JSONDecodeError as e:
-                    current_app.logger.error(f"JSON Decode Error: {str(e)}")
-                    flash('Error processing availability schedule: Invalid format', 'danger')
-                    return redirect(url_for('admin.edit_user', user_id=user_id))
-                except Exception as e:
-                    current_app.logger.error(f"Error updating availability: {str(e)}")
-                    flash(f'Error updating availability schedule: {str(e)}', 'danger')
-                    return redirect(url_for('admin.edit_user', user_id=user_id))
+                    availability = json.loads(availability_json)
+                    doctor.availability = availability
+                except json.JSONDecodeError:
+                    doctor.availability = {}
+                    print("Error decoding availability JSON")
             
             # Update role
             user.role = new_role
             
             db.session.commit()
-            flash('User updated successfully', 'success')
+            flash('User updated successfully!', 'success')
             return redirect(url_for('admin.manage_users'))
             
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error updating user: {str(e)}")
             flash(f'Error updating user: {str(e)}', 'danger')
-            return redirect(url_for('admin.edit_user', user_id=user_id))
+            print(f"Error in edit_user: {str(e)}")
     
-    # For GET request, prepare form data
+    # For GET requests, prepare form data
     form_data = {
-        'id': user.id,
         'name': user.name,
         'email': user.email,
         'role': user.role,
@@ -303,7 +301,10 @@ def edit_user(user_id):
         'availability': doctor.availability if doctor else None
     }
     
-    return render_template('admin/edit_user.html', user=user, form_data=form_data)
+    return render_template('admin/edit_user.html', 
+        user=user, 
+        form_data=form_data
+    )
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required

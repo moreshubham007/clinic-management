@@ -10,6 +10,9 @@ from datetime import timedelta
 from urllib.parse import urlencode
 from flask_cors import CORS
 from flask_caching import Cache
+import logging
+from logging.handlers import RotatingFileHandler
+from docs.api_docs import swagger_ui_blueprint
 
 # Load environment variables
 load_dotenv()
@@ -103,6 +106,7 @@ from routes.doctor import doctor_bp
 from routes.appointments import appointments_bp
 from routes.cases import cases_bp
 from routes.receptionist import receptionist_bp
+from routes.api.patient import patient_api_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -112,6 +116,8 @@ app.register_blueprint(doctor_bp, url_prefix='/doctor')
 app.register_blueprint(appointments_bp, url_prefix='/appointments')
 app.register_blueprint(cases_bp)
 app.register_blueprint(receptionist_bp, url_prefix='/receptionist')
+app.register_blueprint(patient_api_bp, url_prefix='/api')
+app.register_blueprint(swagger_ui_blueprint, url_prefix='/api/docs')
 
 # Basic error handlers
 @app.errorhandler(404)
@@ -200,9 +206,52 @@ def add_cache_control_headers(response):
 # Don't cache admin routes
 @cache.cached(unless=lambda: request.blueprint == 'admin')
 def my_cached_route():
-    # ...
+    # ... function body here
+    pass
 
-    if __name__ == '__main__':
-        with app.app_context():
-            db.create_all()
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+@app.before_request
+def before_request():
+    print(f"Processing request: {request.method} {request.path}")
+
+@app.after_request
+def after_request(response):
+    print(f"Completed request: {request.method} {request.path} - Status: {response.status_code}")
+    return response
+
+# Add better debug configuration
+import logging
+from logging.handlers import RotatingFileHandler
+import os
+
+# Ensure logs directory exists
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+
+# Set up file logging
+file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+file_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+file_handler.setLevel(logging.INFO)
+app.logger.addHandler(file_handler)
+
+app.logger.setLevel(logging.INFO)
+app.logger.info('Application startup')
+
+# Move this outside any function
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+# Debug SQLAlchemy
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+@app.route('/test-db')
+def test_db():
+    try:
+        user_count = User.query.count()
+        return f"Database connection successful. User count: {user_count}"
+    except Exception as e:
+        return f"Database error: {str(e)}" 
