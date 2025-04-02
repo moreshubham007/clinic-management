@@ -12,19 +12,36 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        body {
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
             overflow-x: hidden;
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-            background: linear-gradient(45deg, #4c1d95, #7e22ce);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #4c1d95, #7e22ce);
+        }
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            padding: 2rem 1rem;
         }
 
         .card {
+            width: 100%;
+            max-width: 450px;
             border: none;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
         .input-group-text {
@@ -46,10 +63,13 @@
             border: none;
             padding: 12px;
             font-weight: 500;
+            transition: all 0.3s ease;
         }
 
         .btn-primary:hover {
             background: #6b21a8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .form-check-input:checked {
@@ -84,10 +104,13 @@
             text-align: left;
             font-weight: 500;
             color: #374151;
+            transition: all 0.3s ease;
         }
 
         .btn-google:hover {
             background: #f9fafb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .invalid-feedback {
@@ -99,18 +122,40 @@
             border-radius: 8px;
             margin-top: 1rem;
         }
+
+        .card-footer {
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+        }
+
+        @media (max-height: 700px) {
+            .login-container {
+                align-items: flex-start;
+                padding-top: 2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .card {
+                border-radius: 12px;
+            }
+            .card-body {
+                padding: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="min-vh-100 d-flex align-items-center justify-content-center">
+    <!-- Changed from min-vh-100 to login-container for better centering -->
+    <div class="login-container">
         <div class="container">
             <div class="row justify-content-center">
-                <div class="col-md-6 col-lg-5">
-                    <div class="card shadow-lg">
+                <div class="col-md-12">
+                    <div class="card shadow-lg mx-auto">
                         <div class="card-body p-5">
                             <div class="text-center mb-4">
                                 <img src="{{ url_for('static', filename='images/INNER IMMUNITY LOGO_page-0001.jpg') }}" alt="Fingerprint Logo" class="mb-3" style="width: 50px; height: auto;">
-                                <h2>Inner Immunity </h2>
+                                <h2>The Inner Immuniity</h2>
                                 <p class="text-muted">Please sign in to your account</p>
                             </div>
 
