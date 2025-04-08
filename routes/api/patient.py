@@ -94,11 +94,10 @@ def login():
         return jsonify({'message': 'Account is disabled'}), 403
     
     # Generate token
-    secret_key = os.getenv('SECRET_KEY', 'default-secret-key')
     token = jwt.encode({
         'user_id': user.id,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
-    }, secret_key, algorithm="HS256")
+        'exp': datetime.utcnow() + timedelta(days=7)
+    }, os.getenv('SECRET_KEY', 'default-secret-key'), algorithm="HS256")
     
     return jsonify({
         'token': token,
