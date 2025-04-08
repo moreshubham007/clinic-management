@@ -162,7 +162,7 @@ def get_profile(current_user):
         'pin_code': current_user.pin_code
     }), 200
 
-@patient_api_bp.route('/api/patient/appointments', methods=['GET'])
+@patient_api_bp.route('/patient/appointments', methods=['GET', 'POST'])
 @token_required
 def get_appointments(current_user):
     """
@@ -220,6 +220,117 @@ def get_appointments(current_user):
         },
         'notes': apt.notes
     } for apt in appointments])
+
+@patient_api_bp.route('/patient/appointments', methods=['POST'])
+@token_required
+def create_appointment(current_user):
+    """
+    Create Appointment API
+    ---
+    tags:
+      - Appointments
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - doctor_id
+            - appointment_date
+            - appointment_time
+          properties:
+            doctor_id:
+              type: integer
+              description: ID of the doctor
+            appointment_date:
+              type: string
+              format: date
+              description: Date in YYYY-MM-DD format
+            appointment_time:
+              type: string
+              format: time
+              description: Time in HH:MM format
+            symptoms:
+              type: string
+              description: Patient's symptoms (optional)
+            notes:
+              type: string
+              description: Additional notes (optional)
+    responses:
+      201:
+        description: Appointment created successfully
+      400:
+        description: Invalid input
+      404:
+        description: Doctor not found
+      409:
+        description: Time slot not available
+    """
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if not data or not all(k in data for k in ['doctor_id', 'appointment_date', 'appointment_time']):
+            return jsonify({'message': 'Missing required fields'}), 400
+
+        # Get doctor
+        doctor = Doctor.query.get_or_404(data['doctor_id'])
+
+        # Parse date and time
+        try:
+            appointment_date = datetime.strptime(data['appointment_date'], '%Y-%m-%d').date()
+            appointment_time = datetime.strptime(data['appointment_time'], '%H:%M').time()
+            appointment_datetime = datetime.combine(appointment_date, appointment_time)
+        except ValueError:
+            return jsonify({'message': 'Invalid date or time format'}), 400
+
+        # Validate appointment time is in the future
+        if appointment_datetime <= datetime.now():
+            return jsonify({'message': 'Appointment must be in the future'}), 400
+
+        # Check if the time slot is available
+        existing_appointment = Appointment.query.filter_by(
+            doctor_id=doctor.id,
+            datetime=appointment_datetime,
+            status='scheduled'
+        ).first()
+
+        if existing_appointment:
+            return jsonify({'message': 'This time slot is already booked'}), 409
+
+        # Create new appointment
+        new_appointment = Appointment(
+            patient_id=current_user.id,
+            doctor_id=doctor.id,
+            datetime=appointment_datetime,
+            status='scheduled',
+            symptoms=data.get('symptoms', ''),
+            notes=data.get('notes', '')
+        )
+
+        db.session.add(new_appointment)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Appointment created successfully',
+            'appointment': {
+                'id': new_appointment.id,
+                'datetime': new_appointment.datetime.strftime('%Y-%m-%d %H:%M'),
+                'doctor': {
+                    'id': doctor.id,
+                    'name': doctor.user.name
+                },
+                'status': new_appointment.status,
+                'symptoms': new_appointment.symptoms,
+                'notes': new_appointment.notes
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Error creating appointment: {str(e)}'}), 500
 
 @patient_api_bp.route('/api/patient/cases', methods=['GET'])
 @token_required

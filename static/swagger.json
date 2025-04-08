@@ -48,28 +48,26 @@
     "/patient/login": {
       "post": {
         "tags": ["Authentication"],
-        "summary": "Patient login",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["email", "password"],
-              "properties": {
-                "email": {
-                  "type": "string",
-                  "example": "patient@example.com"
-                },
-                "password": {
-                  "type": "string",
-                  "example": "password123"
-                }
+        "summary": "Patient Login",
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+              "email": {
+                "type": "string",
+                "description": "Patient's email address"
+              },
+              "password": {
+                "type": "string",
+                "description": "Patient's password"
               }
             }
           }
-        ],
+        }],
         "responses": {
           "200": {
             "description": "Login successful",
@@ -108,12 +106,8 @@
     "/patient/profile": {
       "get": {
         "tags": ["Profile"],
-        "summary": "Get patient profile",
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
+        "summary": "Get Patient Profile",
+        "security": [{"Bearer": []}],
         "responses": {
           "200": {
             "description": "Patient profile data",
@@ -163,24 +157,18 @@
     "/patient/appointments": {
       "get": {
         "tags": ["Appointments"],
-        "summary": "Get patient appointments",
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "status",
-            "type": "string",
-            "enum": ["scheduled", "completed", "cancelled"],
-            "description": "Filter appointments by status"
-          }
-        ],
+        "summary": "Get Patient Appointments",
+        "security": [{"Bearer": []}],
+        "parameters": [{
+          "in": "query",
+          "name": "status",
+          "type": "string",
+          "enum": ["scheduled", "completed", "cancelled"],
+          "description": "Filter appointments by status"
+        }],
         "responses": {
           "200": {
-            "description": "List of appointments",
+            "description": "List of patient appointments",
             "schema": {
               "type": "array",
               "items": {
@@ -206,13 +194,102 @@
                         "type": "string"
                       }
                     }
-                  },
-                  "notes": {
-                    "type": "string"
                   }
                 }
               }
             }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Appointments"],
+        "summary": "Create New Appointment",
+        "security": [{"Bearer": []}],
+        "parameters": [{
+          "in": "body",
+          "name": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "required": ["doctor_id", "appointment_date", "appointment_time"],
+            "properties": {
+              "doctor_id": {
+                "type": "integer",
+                "description": "ID of the doctor"
+              },
+              "appointment_date": {
+                "type": "string",
+                "format": "date",
+                "description": "Date in YYYY-MM-DD format"
+              },
+              "appointment_time": {
+                "type": "string",
+                "format": "time",
+                "description": "Time in HH:MM format"
+              },
+              "symptoms": {
+                "type": "string",
+                "description": "Patient's symptoms (optional)"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Additional notes (optional)"
+              }
+            }
+          }
+        }],
+        "responses": {
+          "201": {
+            "description": "Appointment created successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "appointment": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "datetime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "doctor": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "symptoms": {
+                      "type": "string"
+                    },
+                    "notes": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "404": {
+            "description": "Doctor not found"
+          },
+          "409": {
+            "description": "Time slot not available"
           }
         }
       }
@@ -220,15 +297,11 @@
     "/patient/cases": {
       "get": {
         "tags": ["Cases"],
-        "summary": "Get patient cases",
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
+        "summary": "Get Patient Cases",
+        "security": [{"Bearer": []}],
         "responses": {
           "200": {
-            "description": "List of cases",
+            "description": "List of patient cases",
             "schema": {
               "type": "array",
               "items": {
