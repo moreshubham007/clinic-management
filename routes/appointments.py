@@ -62,6 +62,10 @@ def list_appointments():
         except ValueError:
             flash('Invalid doctor selection', 'warning')
     
+    # Add patient_type filter
+    if request.args.get('patient_type'):
+        query = query.filter(Appointment.patient_type == request.args.get('patient_type'))
+    
     # Get all active doctors for the filter dropdown
     doctors = Doctor.query.join(User).filter(User.is_active == True).all()
     
@@ -111,6 +115,7 @@ def create_appointment():
                 doctor_id=doctor_id,
                 patient_id=patient_id,
                 datetime=appointment_datetime,
+                patient_type=request.form.get('patient_type', 'existing'),
                 notes=request.form.get('notes'),
                 remarks=request.form.get('remarks') if current_user.role == 'doctor' else None
             )
@@ -136,47 +141,25 @@ def cancel_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
     
     # Check permissions
-    if current_user.role not in ['admin', 'receptionist'] and \
-       current_user.id != appointment.patient_id and \
-       (not hasattr(current_user, 'doctor') or current_user.doctor.id != appointment.doctor_id):
-        flash('You do not have permission to cancel this appointment', 'danger')
-        return redirect(url_for('appointments.list_appointments'))
-    
-    if appointment.status != 'scheduled':
-        flash('Only scheduled appointments can be cancelled', 'danger')
-        return redirect(url_for('appointments.list_appointments'))
+    if current_user.role not in ['admin', 'receptionist', 'doctor'] and current_user.id != appointment.patient_id:
+        return jsonify({'error': 'Unauthorized'}), 403
     
     appointment.status = 'cancelled'
-    appointment.notes = appointment.notes + '\n\nCancelled by ' + current_user.name
     db.session.commit()
     
-    flash('Appointment cancelled successfully', 'success')
-    return redirect(url_for('appointments.list_appointments'))
+    return jsonify({'success': True})
 
 @appointments_bp.route('/<int:appointment_id>/complete', methods=['POST'])
 @login_required
 def complete_appointment(appointment_id):
     if current_user.role not in ['admin', 'receptionist', 'doctor']:
-        flash('You do not have permission to complete appointments', 'danger')
-        return redirect(url_for('appointments.list_appointments'))
+        return jsonify({'error': 'Unauthorized'}), 403
     
     appointment = Appointment.query.get_or_404(appointment_id)
-    
-    if current_user.role == 'doctor' and \
-       (not hasattr(current_user, 'doctor') or current_user.doctor.id != appointment.doctor_id):
-        flash('You can only complete your own appointments', 'danger')
-        return redirect(url_for('appointments.list_appointments'))
-    
-    if appointment.status != 'scheduled':
-        flash('Only scheduled appointments can be completed', 'danger')
-        return redirect(url_for('appointments.list_appointments'))
-    
     appointment.status = 'completed'
-    appointment.notes = appointment.notes + '\n\nCompleted by ' + current_user.name
     db.session.commit()
     
-    flash('Appointment completed successfully', 'success')
-    return redirect(url_for('appointments.list_appointments'))
+    return jsonify({'success': True})
 
 @appointments_bp.route('/doctor/<int:doctor_id>/availability')
 def get_doctor_availability(doctor_id):
@@ -267,51 +250,36 @@ def transfer_case(case_id):
     flash('Case transferred successfully', 'success')
     return redirect(url_for('appointments.view_patient_cases', patient_id=case.patient_id))
 
-@appointments_bp.route('/<int:appointment_id>/update', methods=['GET', 'POST'])
+@appointments_bp.route('/<int:appointment_id>/edit', methods=['GET', 'POST'])
 @login_required
 def update_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
     
     # Check permissions
     if current_user.role not in ['admin', 'receptionist'] and \
-       current_user.id != appointment.patient_id and \
-       (not hasattr(current_user, 'doctor') or current_user.doctor.id != appointment.doctor_id):
+       (current_user.role != 'doctor' or current_user.doctor.id != appointment.doctor_id):
         flash('You do not have permission to edit this appointment', 'danger')
         return redirect(url_for('appointments.list_appointments'))
     
     if request.method == 'POST':
         try:
-            # Only allow rescheduling if appointment is still scheduled
-            if appointment.status == 'scheduled':
-                date_str = request.form.get('date')
-                time_str = request.form.get('time')
-                if date_str and time_str:
-                    new_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-                    
-                    # Check if the new time is in the future
-                    if new_datetime < datetime.now():
-                        flash('Appointment time must be in the future', 'danger')
-                        return redirect(url_for('appointments.update_appointment', appointment_id=appointment_id))
-                    
-                    # Check if the doctor is available at this time
-                    existing_appointment = Appointment.query.filter(
-                        Appointment.doctor_id == appointment.doctor_id,
-                        Appointment.datetime == new_datetime,
-                        Appointment.id != appointment_id
-                    ).first()
-                    
-                    if existing_appointment:
-                        flash('This time slot is already booked', 'danger')
-                        return redirect(url_for('appointments.update_appointment', appointment_id=appointment_id))
-                    
-                    appointment.datetime = new_datetime
+            # Update appointment details
+            appointment.datetime = datetime.combine(
+                datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
+                datetime.strptime(request.form['time'], '%H:%M').time()
+            )
+            appointment.doctor_id = request.form['doctor_id']
+            appointment.patient_type = request.form.get('patient_type', 'existing')
+            appointment.notes = request.form.get('notes', '')
             
-            # Update notes and remarks
-            if request.form.get('notes'):
-                appointment.notes = request.form.get('notes')
+            # Allow admin/receptionist to change patient and status
+            if current_user.role in ['admin', 'receptionist']:
+                appointment.patient_id = request.form.get('patient_id', appointment.patient_id)
+                appointment.status = request.form.get('status', appointment.status)
             
-            if current_user.role == 'doctor' and request.form.get('remarks'):
-                appointment.remarks = request.form.get('remarks')
+            # Allow doctor to add remarks
+            if current_user.role == 'doctor':
+                appointment.remarks = request.form.get('remarks', '')
             
             db.session.commit()
             flash('Appointment updated successfully', 'success')
@@ -321,10 +289,14 @@ def update_appointment(appointment_id):
             flash('Invalid date or time format', 'danger')
             return redirect(url_for('appointments.update_appointment', appointment_id=appointment_id))
     
+    # Get all active doctors and patients for dropdowns
     doctors = Doctor.query.join(User).filter(User.is_active == True).all()
+    patients = User.query.filter(User.role == 'patient', User.is_active == True).all()
+    
     return render_template('appointments/edit.html', 
                          appointment=appointment,
                          doctors=doctors,
+                         patients=patients,
                          now=datetime.now())
 
 @appointments_bp.route('/<int:appointment_id>/delete', methods=['POST'])

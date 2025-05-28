@@ -78,6 +78,7 @@ class Appointment(db.Model):
     remarks = db.Column(db.Text)  # Doctor's remarks for the patient
     created_at = db.Column(db.DateTime, default=lambda: datetime.now())
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
+    patient_type = db.Column(db.String(20), nullable=False, default='existing')  # 'new' or 'existing'
 
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True)

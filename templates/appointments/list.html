@@ -30,102 +30,139 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="date" name="date" 
-                           value="{{ request.args.get('date') }}">
-                </div>
-                {% if current_user.role in ['admin', 'receptionist'] %}
-                <div class="col-md-3">
-                    <label for="doctor" class="form-label">Doctor</label>
-                    <select class="form-select" id="doctor" name="doctor">
-                        <option value="">All Doctors</option>
-                        {% for doctor in doctors %}
-                        <option value="{{ doctor.id }}" {% if request.args.get('doctor')|int == doctor.id %}selected{% endif %}>
-                            Dr. {{ doctor.user.name }}
-                        </option>
-                        {% endfor %}
+                    <label for="patient_type" class="form-label">Patient Type</label>
+                    <select class="form-select" id="patient_type" name="patient_type">
+                        <option value="">All Patient Types</option>
+                        <option value="new" {% if request.args.get('patient_type') == 'new' %}selected{% endif %}>New Patients</option>
+                        <option value="existing" {% if request.args.get('patient_type') == 'existing' %}selected{% endif %}>Existing Patients</option>
                     </select>
                 </div>
-                {% endif %}
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="fas fa-filter"></i> Apply Filters
-                    </button>
-                    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Clear
-                    </a>
+                <div class="col-md-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" 
+                           value="{{ request.args.get('date', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Appointments List -->
+    <!-- Appointments Table -->
     <div class="card">
         <div class="card-body">
             {% if appointments %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Date & Time</th>
-                            <th>Patient</th>
-                            <th>Doctor</th>
-                            <th>Status</th>
-                            <th>Notes</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for appointment in appointments %}
-                        <tr>
-                            <td>{{ appointment.datetime.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>{{ appointment.patient.name }}</td>
-                            <td>Dr. {{ appointment.doctor.user.name }}</td>
-                            <td>
-                                <span class="badge bg-{{ {
-                                    'scheduled': 'primary',
-                                    'completed': 'success',
-                                    'cancelled': 'danger'
-                                }[appointment.status] }}">
-                                    {{ appointment.status|title }}
-                                </span>
-                            </td>
-                            <td>{{ appointment.notes or '-' }}</td>
-                            <td>
-                                {% if appointment.status == 'scheduled' %}
-                                    <a href="{{ url_for('appointments.update_appointment', appointment_id=appointment.id) }}" 
-                                       class="btn btn-sm btn-primary me-1" title="Edit Appointment">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    {% if current_user.role in ['admin', 'receptionist', 'doctor'] %}
-                                    <button class="btn btn-sm btn-success me-1" onclick="markCompleted({{ appointment.id }})">
-                                        <i class="fas fa-check"></i>
-                                    </button>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Patient</th>
+                                <th>Patient Type</th>
+                                <th>Doctor</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appointment in appointments %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ appointment.datetime.strftime('%Y-%m-%d') }}</div>
+                                    <small class="text-muted">{{ appointment.datetime.strftime('%H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <div>{{ appointment.patient.name }}</div>
+                                    <small class="text-muted">
+                                        {% if appointment.patient.patient_number %}
+                                            ID: {{ appointment.patient.patient_number }}
+                                        {% else %}
+                                            ID: {{ appointment.patient.id }}
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if appointment.patient_type == 'new' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-user-plus me-1"></i>New Patient
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-user-check me-1"></i>Existing Patient
+                                        </span>
                                     {% endif %}
-                                    <button class="btn btn-sm btn-danger me-1" onclick="cancelAppointment({{ appointment.id }})">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                    {% if current_user.role == 'receptionist' %}
-                                    <button class="btn btn-sm btn-danger" onclick="deleteAppointment({{ appointment.id }})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                </td>
+                                <td>
+                                    <div>Dr. {{ appointment.doctor.user.name }}</div>
+                                    <small class="text-muted">{{ appointment.doctor.specialization }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ {
+                                        'scheduled': 'warning',
+                                        'completed': 'success',
+                                        'cancelled': 'danger'
+                                    }[appointment.status] }}">
+                                        {{ appointment.status.title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if appointment.notes %}
+                                        <small>{{ appointment.notes[:50] }}{% if appointment.notes|length > 50 %}...{% endif %}</small>
+                                    {% else %}
+                                        <span class="text-muted">No notes</span>
                                     {% endif %}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <!-- Edit Button -->
+                                        {% if current_user.role in ['admin', 'receptionist'] or 
+                                              (current_user.role == 'doctor' and current_user.doctor.id == appointment.doctor_id) %}
+                                        <a href="{{ url_for('appointments.update_appointment', appointment_id=appointment.id) }}" 
+                                           class="btn btn-outline-primary" title="Edit Appointment">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <!-- Complete and Cancel buttons for scheduled appointments -->
+                                        {% if current_user.role in ['admin', 'receptionist', 'doctor'] and appointment.status == 'scheduled' %}
+                                        <button class="btn btn-outline-success" 
+                                                onclick="markCompleted({{ appointment.id }})" title="Mark as Completed">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" 
+                                                onclick="cancelAppointment({{ appointment.id }})" title="Cancel Appointment">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        {% endif %}
+                                        
+                                        <!-- Delete button for admin only -->
+                                        {% if current_user.role == 'admin' %}
+                                        <button class="btn btn-outline-danger" 
+                                                onclick="deleteAppointment({{ appointment.id }})" title="Delete Appointment">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
-            <p class="text-muted mb-0">No appointments found.</p>
+                <div class="text-center py-4">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h5>No appointments found</h5>
+                    <p class="text-muted">No appointments match your current filters.</p>
+                </div>
             {% endif %}
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
 function markCompleted(appointmentId) {
     if (confirm('Mark this appointment as completed?')) {
@@ -137,7 +174,11 @@ function markCompleted(appointmentId) {
         }).then(response => {
             if (response.ok) {
                 window.location.reload();
+            } else {
+                alert('Error completing appointment');
             }
+        }).catch(error => {
+            alert('Error completing appointment');
         });
     }
 }
@@ -152,7 +193,11 @@ function cancelAppointment(appointmentId) {
         }).then(response => {
             if (response.ok) {
                 window.location.reload();
+            } else {
+                alert('Error cancelling appointment');
             }
+        }).catch(error => {
+            alert('Error cancelling appointment');
         });
     }
 }
@@ -167,7 +212,11 @@ function deleteAppointment(appointmentId) {
         }).then(response => {
             if (response.ok) {
                 window.location.reload();
+            } else {
+                alert('Error deleting appointment');
             }
+        }).catch(error => {
+            alert('Error deleting appointment');
         });
     }
 }
