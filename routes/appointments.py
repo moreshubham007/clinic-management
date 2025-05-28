@@ -255,10 +255,26 @@ def transfer_case(case_id):
 def update_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
     
-    # Check permissions
-    if current_user.role not in ['admin', 'receptionist'] and \
-       (current_user.role != 'doctor' or current_user.doctor.id != appointment.doctor_id):
-        flash('You do not have permission to edit this appointment', 'danger')
+    # Enhanced permission checking based on appointment status
+    can_edit = False
+    
+    if current_user.role == 'admin':
+        can_edit = True
+    elif appointment.status == 'completed':
+        # Only doctors can edit completed appointments (besides admin)
+        if current_user.role == 'doctor' and current_user.doctor.id == appointment.doctor_id:
+            can_edit = True
+    else:
+        # Non-completed appointments: admin, receptionist, or assigned doctor
+        if current_user.role in ['admin', 'receptionist'] or \
+           (current_user.role == 'doctor' and current_user.doctor.id == appointment.doctor_id):
+            can_edit = True
+    
+    if not can_edit:
+        if appointment.status == 'completed' and current_user.role == 'receptionist':
+            flash('Completed appointments can only be edited by the assigned doctor or admin', 'warning')
+        else:
+            flash('You do not have permission to edit this appointment', 'danger')
         return redirect(url_for('appointments.list_appointments'))
     
     if request.method == 'POST':
@@ -272,10 +288,12 @@ def update_appointment(appointment_id):
             appointment.patient_type = request.form.get('patient_type', 'existing')
             appointment.notes = request.form.get('notes', '')
             
-            # Allow admin/receptionist to change patient and status
+            # Allow admin/receptionist to change patient and status (if not completed)
             if current_user.role in ['admin', 'receptionist']:
-                appointment.patient_id = request.form.get('patient_id', appointment.patient_id)
-                appointment.status = request.form.get('status', appointment.status)
+                # Receptionist can only modify non-completed appointments
+                if appointment.status != 'completed' or current_user.role == 'admin':
+                    appointment.patient_id = request.form.get('patient_id', appointment.patient_id)
+                    appointment.status = request.form.get('status', appointment.status)
             
             # Allow doctor to add remarks
             if current_user.role == 'doctor':

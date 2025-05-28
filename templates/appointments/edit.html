@@ -16,6 +16,19 @@
                     </a>
                 </div>
                 <div class="card-body">
+                    <!-- Permission Warning for Completed Appointments -->
+                    {% if appointment.status == 'completed' and current_user.role == 'receptionist' %}
+                    <div class="alert alert-warning mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Limited Access
+                        </h6>
+                        <p class="mb-0">
+                            This appointment is completed and can only be edited by the assigned doctor or admin. 
+                            You can view the details but cannot make changes.
+                        </p>
+                    </div>
+                    {% endif %}
+
                     <!-- Current Appointment Information -->
                     <div class="alert alert-info mb-4">
                         <h6 class="alert-heading mb-2">
@@ -48,8 +61,8 @@
                     </div>
 
                     <form method="POST" class="needs-validation" novalidate>
-                        <!-- Patient Selection (Admin/Receptionist only) -->
-                        {% if current_user.role in ['admin', 'receptionist'] %}
+                        <!-- Patient Selection (Admin/Receptionist only for non-completed appointments) -->
+                        {% if current_user.role in ['admin', 'receptionist'] and (appointment.status != 'completed' or current_user.role == 'admin') %}
                         <div class="mb-4">
                             <label for="patient_id" class="form-label">Patient <span class="text-danger">*</span></label>
                             <select class="form-select" id="patient_id" name="patient_id" required>
@@ -65,43 +78,36 @@
                             </select>
                             <div class="invalid-feedback">Please select a patient.</div>
                         </div>
-                        {% else %}
-                        <input type="hidden" name="patient_id" value="{{ appointment.patient_id }}">
                         {% endif %}
 
-                        <!-- Doctor Selection -->
-                        <div class="mb-4">
-                            <label for="doctor_id" class="form-label">Doctor <span class="text-danger">*</span></label>
-                            <select class="form-select" id="doctor_id" name="doctor_id" required>
-                                <option value="">Select Doctor</option>
-                                {% for doctor in doctors %}
-                                <option value="{{ doctor.id }}" 
-                                        {% if doctor.id == appointment.doctor_id %}selected{% endif %}>
-                                    Dr. {{ doctor.user.name }} 
-                                    {% if doctor.specialization %}({{ doctor.specialization }}){% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="invalid-feedback">Please select a doctor.</div>
-                        </div>
-
-                        <!-- Patient Type Selection -->
+                        <!-- Patient Type -->
                         <div class="mb-4">
                             <label for="patient_type" class="form-label">Patient Type <span class="text-danger">*</span></label>
                             <select class="form-select" id="patient_type" name="patient_type" required>
                                 <option value="">Select patient type</option>
-                                <option value="new" {% if appointment.patient_type == 'new' %}selected{% endif %}>
-                                    New Patient
-                                </option>
-                                <option value="existing" {% if appointment.patient_type == 'existing' %}selected{% endif %}>
-                                    Existing Patient
-                                </option>
+                                <option value="new" {% if appointment.patient_type == 'new' %}selected{% endif %}>New Patient</option>
+                                <option value="existing" {% if appointment.patient_type == 'existing' %}selected{% endif %}>Existing Patient</option>
                             </select>
                             <div class="form-text">
                                 <i class="fas fa-info-circle text-primary"></i>
                                 Select "New Patient" for first-time visitors or "Existing Patient" for returning patients
                             </div>
                             <div class="invalid-feedback">Please select patient type.</div>
+                        </div>
+
+                        <!-- Doctor Selection -->
+                        <div class="mb-4">
+                            <label for="doctor_id" class="form-label">Doctor <span class="text-danger">*</span></label>
+                            <select class="form-select" id="doctor_id" name="doctor_id" required>
+                                <option value="">Select a doctor</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}" 
+                                        {% if doctor.id == appointment.doctor_id %}selected{% endif %}>
+                                    Dr. {{ doctor.user.name }} ({{ doctor.specialization }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a doctor.</div>
                         </div>
 
                         <!-- Date and Time -->
@@ -120,8 +126,8 @@
                             </div>
                         </div>
 
-                        <!-- Status (Admin/Receptionist only) -->
-                        {% if current_user.role in ['admin', 'receptionist'] %}
+                        <!-- Status (Admin/Receptionist only for non-completed, or Admin for all) -->
+                        {% if current_user.role in ['admin', 'receptionist'] and (appointment.status != 'completed' or current_user.role == 'admin') %}
                         <div class="mb-4">
                             <label for="status" class="form-label">Status</label>
                             <select class="form-select" id="status" name="status">
@@ -129,47 +135,35 @@
                                 <option value="completed" {% if appointment.status == 'completed' %}selected{% endif %}>Completed</option>
                                 <option value="cancelled" {% if appointment.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                             </select>
-                            <div class="form-text">
-                                <i class="fas fa-exclamation-triangle text-warning"></i>
-                                Changing status will affect appointment workflow
-                            </div>
                         </div>
                         {% endif %}
 
                         <!-- Administrative Notes -->
                         <div class="mb-4">
                             <label for="notes" class="form-label">Administrative Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3" 
-                                      placeholder="Administrative notes, special instructions, etc.">{{ appointment.notes or '' }}</textarea>
-                            <div class="form-text">
-                                <i class="fas fa-info-circle text-muted"></i>
-                                These notes are visible to administrative staff and doctors
-                            </div>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="Any administrative notes or special instructions">{{ appointment.notes or '' }}</textarea>
                         </div>
 
-                        <!-- Doctor's Remarks (Doctor only) -->
+                        <!-- Doctor's Remarks (Doctors only) -->
                         {% if current_user.role == 'doctor' %}
                         <div class="mb-4">
                             <label for="remarks" class="form-label">Doctor's Remarks</label>
-                            <textarea class="form-control" id="remarks" name="remarks" rows="3" 
-                                      placeholder="Medical notes, observations, follow-up instructions...">{{ appointment.remarks or '' }}</textarea>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                      placeholder="Medical observations, treatment notes, or follow-up instructions">{{ appointment.remarks or '' }}</textarea>
                             <div class="form-text">
                                 <i class="fas fa-user-md text-primary"></i>
-                                These remarks are for medical documentation and patient records
+                                These remarks are visible to medical staff and can be used for patient care continuity.
                             </div>
                         </div>
                         {% endif %}
 
-                        <!-- Action Buttons -->
+                        <!-- Form Actions -->
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('appointments.list_appointments') }}" 
-                               class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
                             <div>
                                 {% if current_user.role in ['admin', 'receptionist'] and appointment.status == 'scheduled' %}
-                                <button type="button" class="btn btn-warning me-2" onclick="quickCancel()">
-                                    <i class="fas fa-ban"></i> Quick Cancel
+                                <button type="button" class="btn btn-outline-warning me-2" onclick="quickCancel()">
+                                    <i class="fas fa-times"></i> Quick Cancel
                                 </button>
                                 <button type="button" class="btn btn-success me-2" onclick="quickComplete()">
                                     <i class="fas fa-check"></i> Quick Complete
@@ -208,30 +202,6 @@ document.addEventListener('DOMContentLoaded', function() {
     {% if appointment.status == 'scheduled' %}
     dateInput.setAttribute('min', today);
     {% endif %}
-
-    // Doctor availability check (optional enhancement)
-    const doctorSelect = document.getElementById('doctor_id');
-    const timeInput = document.getElementById('time');
-    
-    function checkAvailability() {
-        const doctorId = doctorSelect.value;
-        const date = dateInput.value;
-        
-        if (doctorId && date) {
-            fetch(`/appointments/doctor/${doctorId}/availability?date=${date}`)
-                .then(response => response.json())
-                .then(data => {
-                    // You can implement time slot validation here
-                    console.log('Doctor availability:', data);
-                })
-                .catch(error => {
-                    console.error('Error checking availability:', error);
-                });
-        }
-    }
-
-    doctorSelect.addEventListener('change', checkAvailability);
-    dateInput.addEventListener('change', checkAvailability);
 });
 
 // Quick action functions
