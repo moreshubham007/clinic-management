@@ -55,6 +55,15 @@
                                     <span class="badge bg-{{ 'success' if appointment.patient_type == 'new' else 'info' }}">
                                         {{ appointment.patient_type.title() }} Patient
                                     </span>
+                                </small><br>
+                                <small><strong>Priority:</strong> 
+                                    <span class="badge bg-{{ 
+                                        'danger' if appointment.priority == 'high' else 
+                                        'warning' if appointment.priority == 'medium' else 
+                                        'secondary' 
+                                    }}">
+                                        {{ appointment.priority.title() }} Priority
+                                    </span>
                                 </small>
                             </div>
                         </div>
@@ -93,6 +102,22 @@
                                 Select "New Patient" for first-time visitors or "Existing Patient" for returning patients
                             </div>
                             <div class="invalid-feedback">Please select patient type.</div>
+                        </div>
+
+                        <!-- Priority -->
+                        <div class="mb-4">
+                            <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="priority" name="priority" required>
+                                <option value="">Select priority level</option>
+                                <option value="high" {% if appointment.priority == 'high' %}selected{% endif %}>High Priority</option>
+                                <option value="medium" {% if appointment.priority == 'medium' %}selected{% endif %}>Medium Priority</option>
+                                <option value="low" {% if appointment.priority == 'low' %}selected{% endif %}>Low Priority</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                High priority appointments require immediate attention, medium for regular cases, low for routine follow-ups
+                            </div>
+                            <div class="invalid-feedback">Please select priority level.</div>
                         </div>
 
                         <!-- Doctor Selection -->

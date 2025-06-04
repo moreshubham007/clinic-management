@@ -73,12 +73,18 @@ class Appointment(db.Model):
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     datetime = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), default='scheduled')  # scheduled, completed, cancelled
-    notes = db.Column(db.Text)  # Administrative notes
-    remarks = db.Column(db.Text)  # Doctor's remarks for the patient
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now())
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
-    patient_type = db.Column(db.String(20), nullable=False, default='existing')  # 'new' or 'existing'
+    status = db.Column(db.String(20), default='scheduled')
+    patient_type = db.Column(db.String(20), default='existing')
+    priority = db.Column(db.String(10), default='medium')  # high, medium, low
+    notes = db.Column(db.Text)
+    remarks = db.Column(db.Text)
+    payment_status = db.Column(db.String(20), default='unpaid')  # paid, unpaid
+    payment_amount = db.Column(db.Float)
+    payment_mode = db.Column(db.String(20))  # cash, online
+    payment_received_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    payment_date = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.utcnow())
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
 
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True)

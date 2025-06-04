@@ -38,6 +38,15 @@
                     </select>
                 </div>
                 <div class="col-md-3">
+                    <label for="priority" class="form-label">Priority</label>
+                    <select class="form-select" id="priority" name="priority">
+                        <option value="">All Priorities</option>
+                        <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>High Priority</option>
+                        <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium Priority</option>
+                        <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low Priority</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
                     <label for="date" class="form-label">Date</label>
                     <input type="date" class="form-control" id="date" name="date" 
                            value="{{ request.args.get('date', '') }}">
@@ -61,6 +70,7 @@
                                 <th>Date & Time</th>
                                 <th>Patient</th>
                                 <th>Patient Type</th>
+                                <th>Priority</th>
                                 <th>Doctor</th>
                                 <th>Status</th>
                                 <th>Notes</th>
@@ -92,6 +102,21 @@
                                         {% else %}
                                             <span class="badge bg-info">
                                                 <i class="fas fa-user-check me-1"></i>Existing Patient
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if appointment.priority == 'high' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-exclamation-circle me-1"></i>High
+                                            </span>
+                                        {% elif appointment.priority == 'low' %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-circle me-1"></i>Low
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-minus-circle me-1"></i>Medium
                                             </span>
                                         {% endif %}
                                     </td>

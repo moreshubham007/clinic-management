@@ -66,6 +66,10 @@ def list_appointments():
     if request.args.get('patient_type'):
         query = query.filter(Appointment.patient_type == request.args.get('patient_type'))
     
+    # Add priority filter
+    if request.args.get('priority'):
+        query = query.filter(Appointment.priority == request.args.get('priority'))
+    
     # Get all active doctors for the filter dropdown
     doctors = Doctor.query.join(User).filter(User.is_active == True).all()
     
@@ -116,6 +120,7 @@ def create_appointment():
                 patient_id=patient_id,
                 datetime=appointment_datetime,
                 patient_type=request.form.get('patient_type', 'existing'),
+                priority=request.form.get('priority', 'medium'),
                 notes=request.form.get('notes'),
                 remarks=request.form.get('remarks') if current_user.role == 'doctor' else None
             )
@@ -286,6 +291,7 @@ def update_appointment(appointment_id):
             )
             appointment.doctor_id = request.form['doctor_id']
             appointment.patient_type = request.form.get('patient_type', 'existing')
+            appointment.priority = request.form.get('priority', 'medium')
             appointment.notes = request.form.get('notes', '')
             
             # Allow admin/receptionist to change patient and status (if not completed)

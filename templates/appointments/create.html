@@ -60,6 +60,21 @@
                             <div class="invalid-feedback">Please select patient type.</div>
                         </div>
 
+                        <div class="mb-4">
+                            <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="priority" name="priority" required>
+                                <option value="">Select priority level</option>
+                                <option value="high">High Priority</option>
+                                <option value="medium" selected>Medium Priority</option>
+                                <option value="low">Low Priority</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                High priority appointments require immediate attention, medium for regular cases, low for routine follow-ups
+                            </div>
+                            <div class="invalid-feedback">Please select priority level.</div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="doctor_id" class="form-label">Doctor</label>
                             <select class="form-select" id="doctor_id" name="doctor_id" required>
