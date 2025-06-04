@@ -83,13 +83,18 @@ def list_appointments():
 @appointments_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create_appointment():
-    if current_user.role not in ['admin', 'receptionist', 'patient']:
+    if current_user.role not in ['admin', 'receptionist', 'patient', 'doctor']:
         flash('You do not have permission to create appointments', 'danger')
         return redirect(url_for('appointments.list_appointments'))
     
     if request.method == 'POST':
-        doctor_id = request.form.get('doctor_id')
-        patient_id = request.form.get('patient_id') if current_user.role in ['admin', 'receptionist'] else current_user.id
+        # For doctors, automatically set themselves as the doctor
+        if current_user.role == 'doctor':
+            doctor_id = current_user.doctor.id
+        else:
+            doctor_id = request.form.get('doctor_id')
+            
+        patient_id = request.form.get('patient_id') if current_user.role in ['admin', 'receptionist', 'doctor'] else current_user.id
         date_str = request.form.get('date')
         time_str = request.form.get('time')
         
@@ -135,8 +140,14 @@ def create_appointment():
             flash('Invalid date or time format', 'danger')
             return redirect(url_for('appointments.create_appointment'))
     
-    doctors = Doctor.query.join(User).filter(User.is_active == True).all()
-    patients = User.query.filter_by(role='patient').all() if current_user.role in ['admin', 'receptionist'] else None
+    # For GET request - prepare data for the form
+    if current_user.role == 'doctor':
+        # Doctors can only create appointments for themselves
+        doctors = [current_user.doctor]  # Only show themselves as an option
+    else:
+        doctors = Doctor.query.join(User).filter(User.is_active == True).all()
+    
+    patients = User.query.filter_by(role='patient').all() if current_user.role in ['admin', 'receptionist', 'doctor'] else None
     
     return render_template('appointments/create.html', doctors=doctors, patients=patients)
 

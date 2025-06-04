@@ -246,9 +246,9 @@
 <script>
     // CSRF token handling for fetch requests
     function fetchWithCSRF(url, options = {}) {
-        // Get CSRF token from meta tag
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
+    // Get CSRF token from meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
         if (!csrfToken) {
             console.error('CSRF token not found in meta tag');
         }
@@ -258,7 +258,7 @@
         // Set up default headers
         const headers = {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
+                'X-CSRFToken': csrfToken,
             ...(options.headers || {})
         };
         

@@ -6,9 +6,14 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Appointments</h2>
-        {% if current_user.role in ['admin', 'receptionist', 'patient'] %}
+        {% if current_user.role in ['admin', 'receptionist', 'patient', 'doctor'] %}
         <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> New Appointment
+            {% if current_user.role == 'doctor' %}
+                <small class="d-block" style="font-size: 0.75em; margin-top: 2px;">
+                    (For yourself)
+                </small>
+            {% endif %}
         </a>
         {% endif %}
     </div>

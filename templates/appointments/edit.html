@@ -234,8 +234,8 @@ function quickCancel() {
     if (confirm('Are you sure you want to cancel this appointment?')) {
         document.getElementById('status').value = 'cancelled';
         document.querySelector('form').submit();
+        }
     }
-}
 
 function quickComplete() {
     if (confirm('Mark this appointment as completed?')) {
