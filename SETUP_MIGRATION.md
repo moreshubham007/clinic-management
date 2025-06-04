@@ -155,6 +155,7 @@ pip install flask-cors
 ```bash
 # Solution: Check for mixed tabs/spaces
 python -m py_compile routes/admin.py
+python -m py_compile routes/receptionist.py
 # Fix any indentation issues reported
 ```
 
