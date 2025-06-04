@@ -2,10 +2,11 @@
 
 ## 📋 Table of Contents
 1. [Getting Started](#getting-started)
-2. [Appointment Management](#appointment-management)
-3. [Priority System](#priority-system)
-4. [User Roles & Permissions](#user-roles--permissions)
-5. [Troubleshooting](#troubleshooting)
+2. [Patient Management](#patient-management)
+3. [Appointment Management](#appointment-management)
+4. [Priority System](#priority-system)
+5. [User Roles & Permissions](#user-roles--permissions)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -21,6 +22,75 @@
 2. Enter your email and password
 3. Click "Login" to access the system
 4. You'll be redirected to your role-specific dashboard
+
+---
+
+## 👥 Patient Management
+
+### Viewing Patient Lists
+
+#### For Receptionist Users:
+The Patient List page displays all registered patients with advanced pagination for optimal performance.
+
+#### Page Features:
+- **Pagination Controls**: 
+  - Maximum 100 patients displayed per page
+  - Always-visible navigation (Previous/Next buttons)
+  - Page information showing current position (e.g., "Page 2 of 5")
+  - Smart page range with ellipsis for large datasets
+
+- **Header Information**:
+  - Total patient count
+  - Current page indicator
+  - Number of total pages
+  - Search result count (when filtering)
+
+#### Navigation Options:
+
+**Basic Navigation:**
+- **Previous Button**: Go to previous page (disabled on first page)
+- **Next Button**: Go to next page (disabled on last page)
+- **Page Numbers**: Click specific page numbers to jump directly
+
+**Advanced Navigation:**
+- **Quick Jump**: For datasets with >5 pages, use the "Go to Page" input
+- **Search Integration**: Search results are paginated with preserved search terms
+
+#### Search Functionality:
+1. **Search Bar**: Search by patient name, email, or patient number
+2. **Real-time Results**: Results are paginated automatically
+3. **Clear Search**: Reset search and return to page 1
+4. **Search Persistence**: Search terms maintained across page navigation
+
+#### Performance Benefits:
+- **Faster Loading**: Only 100 patients loaded at a time
+- **Reduced Memory Usage**: Efficient database queries
+- **Better Responsiveness**: Optimized for large patient databases
+- **Mobile Friendly**: Responsive pagination controls
+
+### Patient Information Display
+
+#### Patient List Columns:
+- **Patient Number**: Unique identifier badge
+- **Name**: With avatar initials
+- **Mobile Number**: Contact information
+- **City**: Location information
+- **Actions**: View details, history, and create appointment buttons
+
+#### Patient Details Modal:
+Access comprehensive patient information through the "View Details" button:
+- Personal information (name, email, mobile)
+- Medical details (gender, date of birth)
+- Address information
+- Direct edit patient link
+
+### Patient Actions
+
+#### Available Actions per Patient:
+1. **View Details**: Quick overview in modal popup
+2. **Patient History**: Complete medical history and appointments
+3. **New Appointment**: Direct appointment creation for the patient
+4. **Edit Patient**: Modify patient information (receptionist access)
 
 ---
 
@@ -206,35 +276,58 @@
 
 ### Common Issues & Solutions
 
-#### 1. Cannot Create Appointment
+#### 1. Patient List Issues
+
+**Problem**: Pagination not working or showing incorrect page counts
+**Solutions**:
+- Refresh the page (F5 or Ctrl+R)
+- Clear browser cache and cookies
+- Check if you have patients in the database
+- Contact admin if issue persists
+
+**Problem**: Search results not paginated correctly
+**Solutions**:
+- Clear search and try again
+- Ensure search term is at least 2 characters
+- Try searching with different criteria (name vs email)
+- Check for special characters in search term
+
+**Problem**: "Go to Page" not working
+**Solutions**:
+- Ensure page number is within valid range (1 to max pages)
+- Check that you're entering numbers only
+- Try using pagination buttons instead
+- Contact support if feature is completely broken
+
+#### 2. Cannot Create Appointment
 **Problem**: "New Appointment" button not visible
 **Solutions**:
 - Verify you're logged in with appropriate role
 - Check if you have appointment creation permissions
 - Contact admin if you should have access
 
-#### 2. No Available Time Slots
+#### 3. No Available Time Slots
 **Problem**: Time dropdown shows "No available slots"
 **Solutions**:
 - Try different date
 - Check doctor's availability schedule
 - Contact admin to update doctor availability
 
-#### 3. Priority Not Showing
+#### 4. Priority Not Showing
 **Problem**: Priority column/filter not visible
 **Solutions**:
 - Run database migration: `python add_priority_migration.py`
 - Clear browser cache
 - Contact system administrator
 
-#### 4. Edit Button Missing
+#### 5. Edit Button Missing
 **Problem**: Cannot edit appointments
 **Solutions**:
 - Check appointment status (completed appointments have restricted access)
 - Verify your role permissions
 - Ensure you're assigned to the appointment (for doctors)
 
-#### 5. Patient Search Not Working
+#### 6. Patient Search Not Working
 **Problem**: Patient search returns no results
 **Solutions**:
 - Check spelling and try partial names
@@ -242,7 +335,7 @@
 - Verify patient exists in system
 - Ensure patient is active
 
-#### 6. Page Not Loading After Browser Back
+#### 7. Page Not Loading After Browser Back
 **Problem**: Previous page shows blank or doesn't load
 **Solutions**:
 - Refresh the page (F5 or Ctrl+R)
@@ -279,6 +372,13 @@
 
 ## 🔄 Workflow Recommendations
 
+### Patient Management for Receptionists:
+1. **Daily Review**: Check patient list for new registrations
+2. **Search Efficiently**: Use patient number or partial names for quick lookups
+3. **Page Navigation**: Use page jump for large patient databases (>500 patients)
+4. **Patient Verification**: Always verify patient details before creating appointments
+5. **Regular Updates**: Keep patient contact information current
+
 ### Daily Routine for Receptionists:
 1. **Morning**: Review high-priority appointments for the day
 2. **Check-in**: Use filters to view today's scheduled appointments
@@ -300,4 +400,4 @@
 ---
 
 *Last Updated: December 2024*
-*Version: 2.0.0* 
+*Version: 2.1.0* 

@@ -104,7 +104,17 @@ sudo systemctl start clinic-management
 
 ## 🧪 Testing the Update
 
-### 1. Test Priority System
+### 1. Test Patient List Pagination
+1. **Login** as a receptionist
+2. **Navigate** to Patients → Patients List
+3. **Verify** pagination controls are visible (even with <100 patients)
+4. **Check** total patient count in header
+5. **Test** Previous/Next buttons functionality
+6. **Verify** page information display (e.g., "Page 1 of 3")
+7. **Test** search functionality with pagination
+8. **Test** "Go to Page" feature (if >5 pages available)
+
+### 2. Test Priority System
 1. **Login** as an admin or receptionist
 2. **Navigate** to Appointments → Create New Appointment
 3. **Verify** priority dropdown is visible with three options:
@@ -114,7 +124,7 @@ sudo systemctl start clinic-management
 4. **Create** a test appointment with high priority
 5. **Check** the appointments list shows priority badges
 
-### 2. Test Doctor Self-Appointment
+### 3. Test Doctor Self-Appointment
 1. **Login** as a doctor user
 2. **Navigate** to Appointments
 3. **Verify** "New Appointment" button shows "(For yourself)" note
@@ -122,7 +132,7 @@ sudo systemctl start clinic-management
 5. **Verify** doctor field is hidden and auto-selected
 6. **Create** a test appointment
 
-### 3. Test Permission System
+### 4. Test Permission System
 1. **Create** a completed appointment (admin/receptionist)
 2. **Login** as receptionist
 3. **Verify** edit button is not visible for completed appointments
@@ -206,11 +216,40 @@ ADD CONSTRAINT fk_payment_received_by
 FOREIGN KEY (payment_received_by) REFERENCES user(id);
 ```
 
+### Issue: Patient List Pagination Problems
+
+#### Symptoms:
+- Pagination controls not showing
+- Page counts incorrect
+- Search results not paginated
+- "Go to Page" feature not working
+
+#### Solutions:
+1. **Clear browser cache** (Ctrl+Shift+Delete)
+2. **Check Flask-SQLAlchemy version**:
+```bash
+pip show Flask-SQLAlchemy
+# Should be compatible with pagination
+```
+3. **Verify database connection**
+4. **Check browser console** for JavaScript errors
+5. **Test with different browsers**
+
 ---
 
 ## 📊 Verification Checklist
 
 After migration, verify these features work:
+
+### ✅ Patient List Pagination
+- [ ] Pagination controls visible on Patient List page
+- [ ] Previous/Next buttons work correctly
+- [ ] Page information displays current page and total pages
+- [ ] Search functionality works with pagination
+- [ ] "Go to Page" feature works for large datasets
+- [ ] Page navigation preserves search terms
+- [ ] Mobile responsive pagination controls
+- [ ] Total patient count shows in header
 
 ### ✅ Priority System
 - [ ] Priority dropdown in create appointment form
@@ -290,5 +329,5 @@ Please report:
 
 ---
 
-*Migration Guide Version: 2.0.0*
+*Migration Guide Version: 2.1.0*
 *Last Updated: December 2024* 
