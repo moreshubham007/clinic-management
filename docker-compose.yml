@@ -12,7 +12,7 @@ services:
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
-      - DATABASE_URL=mysql://hospital:hospital123@192.168.0.109/clinic_db
+      - DATABASE_URL=mysql://hospital:hospital123@192.168.0.125/clinic_db
       - SECRET_KEY=xwe132mk3nr4no3i4rin
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
