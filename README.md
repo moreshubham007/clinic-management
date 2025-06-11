@@ -81,7 +81,13 @@ MAIL_PASSWORD=your-app-specific-password
 flask db init
 flask db migrate
 flask db upgrade
+
+flask db migrate -m "Add patient_type to appointments"
+flask db upgrade
+
+
 ```
+
 
 7. Create an admin user:
 ```bash

@@ -12,9 +12,9 @@
                     <i class="fas fa-user-plus text-accent me-2"></i> Create New Patient
                 </h3>
                 <a href="{{ url_for('receptionist.patients_list') }}" class="btn btn-outline-secondary btn-hover-effect">
-                    <i class="fas fa-arrow-left"></i> Back to List
-                </a>
-            </div>
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
             
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -37,8 +37,8 @@
                         </h5>
                     </div>
                     <div class="card-body p-4">
-                        <div class="row g-3">
-                            <div class="col-md-12">
+                            <div class="row g-3">
+                                <div class="col-md-12">
                                 <label for="name" class="form-label">Full Name <span class="text-danger">*</span></label>
                                 <div class="input-group input-group-hover">
                                     <span class="input-group-text"><i class="fas fa-user"></i></span>
@@ -48,9 +48,9 @@
                                     <div class="invalid-feedback">
                                         Please provide the patient's name.
                                     </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
+                                <div class="col-md-6">
                                 <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
                                 <div class="input-group input-group-hover">
                                     <span class="input-group-text"><i class="fas fa-envelope"></i></span>
@@ -60,9 +60,9 @@
                                     <div class="invalid-feedback">
                                         Please provide a valid email address.
                                     </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
+                                <div class="col-md-6">
                                 <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
                                 <div class="input-group input-group-hover">
                                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
@@ -82,10 +82,10 @@
                                     </div>
                                     <small class="text-muted" id="passwordFeedback"></small>
                                 </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
                 <!-- Patient Information Section -->
                 <div class="card shadow-sm mb-4 form-card">
@@ -95,18 +95,18 @@
                         </h5>
                     </div>
                     <div class="card-body p-4">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="patient_number" class="form-label">Patient Number</label>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="patient_number" class="form-label">Patient Number</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
                                     <input type="text" class="form-control" id="patient_number" name="patient_number"
                                            placeholder="Auto-generated if left blank">
                                 </div>
-                                <div class="form-text">Leave blank for auto-generation</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="aadhar_number" class="form-label">Aadhar Number</label>
+                                    <div class="form-text">Leave blank for auto-generation</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="aadhar_number" class="form-label">Aadhar Number</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-id-card"></i></span>
                                     <input type="text" class="form-control" id="aadhar_number" name="aadhar_number" 
@@ -116,10 +116,10 @@
                                     <div class="invalid-feedback">
                                         Please provide a valid 12-digit Aadhar number.
                                     </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="mobile_number" class="form-label">Mobile Number</label>
+                                <div class="col-md-6">
+                                    <label for="mobile_number" class="form-label">Mobile Number</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-phone"></i></span>
                                     <input type="tel" class="form-control" id="mobile_number" name="mobile_number" 
@@ -131,9 +131,9 @@
                                     </div>
                                 </div>
                             </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
                 <!-- Personal Information Section -->
                 <div class="card shadow-sm mb-4 form-card">
@@ -143,8 +143,8 @@
                         </h5>
                     </div>
                     <div class="card-body p-4">
-                        <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="row g-3">
+                                <div class="col-md-6">
                                 <label for="gender" class="form-label">Gender <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-venus-mars"></i></span>
@@ -157,19 +157,19 @@
                                     <div class="invalid-feedback">
                                         Please select a gender.
                                     </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                <div class="col-md-6">
+                                    <label for="date_of_birth" class="form-label">Date of Birth</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-calendar"></i></span>
                                     <input type="date" class="form-control" id="date_of_birth" name="date_of_birth">
                                 </div>
                                 <div class="form-text" id="age_calculation"></div>
                             </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
                 <!-- Address Information Section -->
                 <div class="card shadow-sm mb-4 form-card">
@@ -179,7 +179,7 @@
                         </h5>
                     </div>
                     <div class="card-body p-4">
-                        <div class="row g-3">
+                            <div class="row g-3">
                             <div class="col-md-12">
                                 <label for="address" class="form-label">Full Address</label>
                                 <div class="input-group">
@@ -197,7 +197,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <label for="state" class="form-label">State</label>
+                                    <label for="state" class="form-label">State</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-map"></i></span>
                                     <select class="form-select" id="state" name="state">
@@ -233,9 +233,9 @@
                                         <option value="Delhi">Delhi</option>
                                     </select>
                                 </div>
-                            </div>
+                                </div>
                             <div class="col-md-4">
-                                <label for="pin_code" class="form-label">PIN Code</label>
+                                    <label for="pin_code" class="form-label">PIN Code</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-map-pin"></i></span>
                                     <input type="text" class="form-control" id="pin_code" name="pin_code" 
@@ -247,20 +247,20 @@
                                     </div>
                                 </div>
                             </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
                 <!-- Submit Button Section -->
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <a href="{{ url_for('receptionist.patients_list') }}" class="btn btn-outline-secondary me-2">
-                        <i class="fas fa-times"></i> Cancel
-                    </a>
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
                     <button type="submit" class="btn btn-primary btn-gradient px-4">
-                        <i class="fas fa-save"></i> Create Patient
-                    </button>
-                </div>
-            </form>
+                                <i class="fas fa-save"></i> Create Patient
+                            </button>
+                        </div>
+                    </form>
         </div>
     </div>
 </div>
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Form validation
+// Form validation
     if (form) {
         form.addEventListener('submit', function(event) {
             if (!form.checkValidity()) {

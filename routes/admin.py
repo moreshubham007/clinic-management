@@ -113,14 +113,14 @@ def create_user():
                 print("Validation failed: missing required fields")
                 flash('All basic fields are required', 'danger')
                 return render_template('admin/create_user.html', form_data=form_data)
-            
+
             # Check if email exists
             existing_user = User.query.filter_by(email=form_data['email']).first()
             if existing_user:
                 print(f"Email already exists: {form_data['email']}")
                 flash('Email already exists', 'danger')
                 return render_template('admin/create_user.html', form_data=form_data)
-            
+
             # Create user object with explicit transaction
             db.session.begin_nested()  # Create a savepoint
             
@@ -137,7 +137,7 @@ def create_user():
             # Add user to session
             db.session.add(user)
             db.session.flush()  # Get ID without committing
-            
+
             # Add role-specific information
             if form_data['role'] == 'doctor':
                 print("Processing doctor-specific data")
@@ -163,7 +163,7 @@ def create_user():
                 print(f"Doctor object created with user_id: {doctor.user_id}")
                 db.session.add(doctor)
                 print("Doctor added to session")
-            
+
             elif form_data['role'] == 'patient':
                 print("Processing patient-specific data")
                 # Validate required patient fields
@@ -178,7 +178,7 @@ def create_user():
                     'patient_number': request.form.get('patient_number', ''),
                     'gender': request.form.get('gender', '')
                 })
-                
+
                 # Set patient fields
                 user.address = form_data['address']
                 user.state = form_data['state']
@@ -190,7 +190,7 @@ def create_user():
                 user.aadhar_number = form_data['aadhar_number']
                 user.patient_number = form_data['patient_number']
                 user.gender = form_data['gender']
-            
+
             # Commit the transaction
             print("Committing the transaction")
             db.session.commit()
@@ -370,7 +370,7 @@ def next_patient_number():
         return jsonify({
             'status': 'error',
             'message': str(e)
-        }), 500
+        }), 500 
 
 @admin_bp.route('/api/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
 @login_required

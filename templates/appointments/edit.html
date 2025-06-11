@@ -7,90 +7,191 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Edit Appointment</h5>
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-edit me-2"></i>Edit Appointment
+                    </h5>
+                    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
                 </div>
                 <div class="card-body">
-                    <!-- Appointment Information -->
+                    <!-- Permission Warning for Completed Appointments -->
+                    {% if appointment.status == 'completed' and current_user.role == 'receptionist' %}
+                    <div class="alert alert-warning mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Limited Access
+                        </h6>
+                        <p class="mb-0">
+                            This appointment is completed and can only be edited by the assigned doctor or admin. 
+                            You can view the details but cannot make changes.
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Current Appointment Information -->
                     <div class="alert alert-info mb-4">
+                        <h6 class="alert-heading mb-2">
+                            <i class="fas fa-info-circle me-1"></i>Current Appointment Details
+                        </h6>
                         <div class="row">
                             <div class="col-md-6">
-                                <p class="mb-1"><strong>Patient:</strong> {{ appointment.patient.name }}</p>
-                                <p class="mb-1"><strong>Doctor:</strong> Dr. {{ appointment.doctor.user.name }}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="mb-1">
-                                    <strong>Status:</strong>
+                                <small><strong>Patient:</strong> {{ appointment.patient.name }}</small><br>
+                                <small><strong>Doctor:</strong> Dr. {{ appointment.doctor.user.name }}</small><br>
+                                <small><strong>Status:</strong> 
                                     <span class="badge bg-{{ {
                                         'scheduled': 'warning',
                                         'completed': 'success',
                                         'cancelled': 'danger'
                                     }[appointment.status] }}">
-                                        {{ appointment.status.capitalize() }}
+                                        {{ appointment.status.title() }}
                                     </span>
-                                </p>
-                                <p class="mb-1">
-                                    <strong>Created:</strong> 
-                                    {{ appointment.created_at.strftime('%Y-%m-%d %H:%M') }}
-                                </p>
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <small><strong>Current Date:</strong> {{ appointment.datetime.strftime('%Y-%m-%d') }}</small><br>
+                                <small><strong>Current Time:</strong> {{ appointment.datetime.strftime('%H:%M') }}</small><br>
+                                <small><strong>Patient Type:</strong> 
+                                    <span class="badge bg-{{ 'success' if appointment.patient_type == 'new' else 'info' }}">
+                                        {{ appointment.patient_type.title() }} Patient
+                                    </span>
+                                </small><br>
+                                <small><strong>Priority:</strong> 
+                                    <span class="badge bg-{{ 
+                                        'danger' if appointment.priority == 'high' else 
+                                        'warning' if appointment.priority == 'medium' else 
+                                        'secondary' 
+                                    }}">
+                                        {{ appointment.priority.title() }} Priority
+                                    </span>
+                                </small>
                             </div>
                         </div>
                     </div>
 
                     <form method="POST" class="needs-validation" novalidate>
-                        {% if appointment.status == 'scheduled' %}
-                        <!-- Date and Time (only editable if appointment is scheduled) -->
-                        <div class="row mb-3">
+                        <!-- Patient Selection (Admin/Receptionist only for non-completed appointments) -->
+                        {% if current_user.role in ['admin', 'receptionist'] and (appointment.status != 'completed' or current_user.role == 'admin') %}
+                        <div class="mb-4">
+                            <label for="patient_id" class="form-label">Patient <span class="text-danger">*</span></label>
+                            <select class="form-select" id="patient_id" name="patient_id" required>
+                                <option value="">Select a patient</option>
+                                {% for patient in patients %}
+                                <option value="{{ patient.id }}" 
+                                        {% if patient.id == appointment.patient_id %}selected{% endif %}>
+                                    {{ patient.name }} - 
+                                    {% if patient.patient_number %}{{ patient.patient_number }}{% else %}ID: {{ patient.id }}{% endif %}
+                                    ({{ patient.email }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a patient.</div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Patient Type -->
+                        <div class="mb-4">
+                            <label for="patient_type" class="form-label">Patient Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="patient_type" name="patient_type" required>
+                                <option value="">Select patient type</option>
+                                <option value="new" {% if appointment.patient_type == 'new' %}selected{% endif %}>New Patient</option>
+                                <option value="existing" {% if appointment.patient_type == 'existing' %}selected{% endif %}>Existing Patient</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle text-primary"></i>
+                                Select "New Patient" for first-time visitors or "Existing Patient" for returning patients
+                            </div>
+                            <div class="invalid-feedback">Please select patient type.</div>
+                        </div>
+
+                        <!-- Priority -->
+                        <div class="mb-4">
+                            <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="priority" name="priority" required>
+                                <option value="">Select priority level</option>
+                                <option value="high" {% if appointment.priority == 'high' %}selected{% endif %}>High Priority</option>
+                                <option value="medium" {% if appointment.priority == 'medium' %}selected{% endif %}>Medium Priority</option>
+                                <option value="low" {% if appointment.priority == 'low' %}selected{% endif %}>Low Priority</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                High priority appointments require immediate attention, medium for regular cases, low for routine follow-ups
+                            </div>
+                            <div class="invalid-feedback">Please select priority level.</div>
+                        </div>
+
+                        <!-- Doctor Selection -->
+                        <div class="mb-4">
+                            <label for="doctor_id" class="form-label">Doctor <span class="text-danger">*</span></label>
+                            <select class="form-select" id="doctor_id" name="doctor_id" required>
+                                <option value="">Select a doctor</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}" 
+                                        {% if doctor.id == appointment.doctor_id %}selected{% endif %}>
+                                    Dr. {{ doctor.user.name }} ({{ doctor.specialization }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a doctor.</div>
+                        </div>
+
+                        <!-- Date and Time -->
+                        <div class="row mb-4">
                             <div class="col-md-6">
-                                <label for="date" class="form-label">Date</label>
+                                <label for="date" class="form-label">Date <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" id="date" name="date" 
-                                       value="{{ appointment.datetime.strftime('%Y-%m-%d') }}"
-                                       min="{{ now.strftime('%Y-%m-%d') }}" required>
-                                <div class="invalid-feedback">
-                                    Please select a valid date.
-                                </div>
+                                       value="{{ appointment.datetime.strftime('%Y-%m-%d') }}" required>
+                                <div class="invalid-feedback">Please select a date.</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="time" class="form-label">Time</label>
-                                <select class="form-select" id="time" name="time" required>
-                                    <option value="{{ appointment.datetime.strftime('%H:%M') }}">
-                                        {{ appointment.datetime.strftime('%H:%M') }}
-                                    </option>
-                                </select>
-                                <div class="invalid-feedback">
-                                    Please select a valid time slot.
-                                </div>
+                                <label for="time" class="form-label">Time <span class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="time" name="time" 
+                                       value="{{ appointment.datetime.strftime('%H:%M') }}" required>
+                                <div class="invalid-feedback">Please select a time.</div>
                             </div>
+                        </div>
+
+                        <!-- Status (Admin/Receptionist only for non-completed, or Admin for all) -->
+                        {% if current_user.role in ['admin', 'receptionist'] and (appointment.status != 'completed' or current_user.role == 'admin') %}
+                        <div class="mb-4">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="scheduled" {% if appointment.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                                <option value="completed" {% if appointment.status == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="cancelled" {% if appointment.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
                         </div>
                         {% endif %}
 
                         <!-- Administrative Notes -->
-                        <div class="mb-3">
+                        <div class="mb-4">
                             <label for="notes" class="form-label">Administrative Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="2" 
-                                    placeholder="Any administrative notes or special instructions">{{ appointment.notes }}</textarea>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="Any administrative notes or special instructions">{{ appointment.notes or '' }}</textarea>
                         </div>
 
-                        <!-- Doctor's Remarks (only visible to doctors) -->
+                        <!-- Doctor's Remarks (Doctors only) -->
                         {% if current_user.role == 'doctor' %}
-                        <div class="mb-3">
+                        <div class="mb-4">
                             <label for="remarks" class="form-label">Doctor's Remarks</label>
                             <textarea class="form-control" id="remarks" name="remarks" rows="3"
-                                    placeholder="Clinical observations, recommendations, or follow-up instructions for the patient">{{ appointment.remarks }}</textarea>
+                                      placeholder="Medical observations, treatment notes, or follow-up instructions">{{ appointment.remarks or '' }}</textarea>
+                            <div class="form-text">
+                                <i class="fas fa-user-md text-primary"></i>
+                                These remarks are visible to medical staff and can be used for patient care continuity.
+                            </div>
                         </div>
                         {% endif %}
 
+                        <!-- Form Actions -->
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Back
-                            </a>
-                            <div class="btn-group">
-                                {% if appointment.status == 'scheduled' %}
-                                <button type="button" class="btn btn-success" onclick="markCompleted({{ appointment.id }})">
-                                    <i class="fas fa-check"></i> Mark Completed
+                            <div>
+                                {% if current_user.role in ['admin', 'receptionist'] and appointment.status == 'scheduled' %}
+                                <button type="button" class="btn btn-outline-warning me-2" onclick="quickCancel()">
+                                    <i class="fas fa-times"></i> Quick Cancel
                                 </button>
-                                <button type="button" class="btn btn-danger" onclick="cancelAppointment({{ appointment.id }})">
-                                    <i class="fas fa-times"></i> Cancel
+                                <button type="button" class="btn btn-success me-2" onclick="quickComplete()">
+                                    <i class="fas fa-check"></i> Quick Complete
                                 </button>
                                 {% endif %}
                                 <button type="submit" class="btn btn-primary">
@@ -119,82 +220,27 @@ document.addEventListener('DOMContentLoaded', function() {
         form.classList.add('was-validated');
     });
 
-    // Time slot updates
+    // Set minimum date to today for new appointments
     const dateInput = document.getElementById('date');
-    const timeSelect = document.getElementById('time');
-    const currentTime = "{{ appointment.datetime.strftime('%H:%M') }}";
-
-    if (dateInput && timeSelect) {
-        dateInput.addEventListener('change', updateTimeSlots);
-
-        function updateTimeSlots() {
-            const date = dateInput.value;
-            const doctorId = {{ appointment.doctor_id }};
-
-            timeSelect.disabled = true;
-            timeSelect.innerHTML = '<option value="">Loading available slots...</option>';
-
-            fetch(`/appointments/doctor/${doctorId}/availability?date=${date}`)
-                .then(response => response.json())
-                .then(data => {
-                    timeSelect.innerHTML = '';
-                    if (data.error) {
-                        timeSelect.innerHTML = '<option value="">Error loading slots</option>';
-                        return;
-                    }
-
-                    const availableSlots = data.available_slots.filter(
-                        slot => !data.booked_slots.includes(slot) || slot === currentTime
-                    );
-
-                    if (availableSlots.length === 0) {
-                        timeSelect.innerHTML = '<option value="">No available slots</option>';
-                    } else {
-                        availableSlots.forEach(slot => {
-                            const option = document.createElement('option');
-                            option.value = slot;
-                            option.textContent = slot;
-                            option.selected = slot === currentTime;
-                            timeSelect.appendChild(option);
-                        });
-                    }
-                    timeSelect.disabled = false;
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    timeSelect.innerHTML = '<option value="">Error loading slots</option>';
-                });
-        }
-    }
+    const today = new Date().toISOString().split('T')[0];
+    // Only set minimum date if appointment is still scheduled
+    {% if appointment.status == 'scheduled' %}
+    dateInput.setAttribute('min', today);
+    {% endif %}
 });
 
-function markCompleted(appointmentId) {
-    if (confirm('Mark this appointment as completed?')) {
-        fetch(`/appointments/${appointmentId}/complete`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }).then(response => {
-            if (response.ok) {
-                window.location.href = "{{ url_for('appointments.list_appointments') }}";
-            }
-        });
-    }
-}
-
-function cancelAppointment(appointmentId) {
+// Quick action functions
+function quickCancel() {
     if (confirm('Are you sure you want to cancel this appointment?')) {
-        fetch(`/appointments/${appointmentId}/cancel`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }).then(response => {
-            if (response.ok) {
-                window.location.href = "{{ url_for('appointments.list_appointments') }}";
-            }
-        });
+        document.getElementById('status').value = 'cancelled';
+        document.querySelector('form').submit();
+        }
+    }
+
+function quickComplete() {
+    if (confirm('Mark this appointment as completed?')) {
+        document.getElementById('status').value = 'completed';
+        document.querySelector('form').submit();
     }
 }
 </script>

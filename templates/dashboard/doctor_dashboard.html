@@ -20,6 +20,7 @@
                                     <tr>
                                         <th>Time</th>
                                         <th>Patient</th>
+                                        <th>Type</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -28,21 +29,43 @@
                                     {% for appointment in today_appointments %}
                                     <tr>
                                         <td>{{ appointment.datetime.strftime('%H:%M') }}</td>
-                                        <td>{{ appointment.patient.name }}</td>
                                         <td>
-                                            <span class="badge bg-{{ {
-                                                'scheduled': 'warning',
-                                                'completed': 'success',
-                                                'cancelled': 'danger'
-                                            }[appointment.status] }}">
-                                                {{ appointment.status|title }}
-                                            </span>
+                                            <div>{{ appointment.patient.name }}</div>
+                                            <small class="text-muted">{{ appointment.patient.email }}</small>
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('appointments.update_appointment', appointment_id=appointment.id) }}" 
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
+                                            {% if appointment.patient_type == 'new' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-user-plus me-1"></i>New
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-user-check me-1"></i>Existing
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if appointment.status == 'scheduled' %}
+                                                <span class="badge bg-warning">Scheduled</span>
+                                            {% elif appointment.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif appointment.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('appointments.update_appointment', appointment_id=appointment.id) }}" 
+                                                   class="btn btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if appointment.status == 'scheduled' %}
+                                                <button class="btn btn-outline-success" 
+                                                        onclick="markCompleted({{ appointment.id }})">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -56,53 +79,31 @@
             </div>
         </div>
 
-        <!-- Upcoming Appointments -->
+        <!-- Patient Type Summary -->
         <div class="col-md-6 mb-4">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0 text-purple-900">Upcoming Appointments</h5>
-                    <span class="badge badge-purple">Next 7 Days</span>
+                <div class="card-header">
+                    <h5 class="card-title mb-0 text-purple-900">Patient Type Overview</h5>
                 </div>
                 <div class="card-body">
-                    {% if upcoming_appointments %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Date & Time</th>
-                                        <th>Patient</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for appointment in upcoming_appointments %}
-                                    <tr>
-                                        <td>{{ appointment.datetime.strftime('%Y-%m-%d %H:%M') }}</td>
-                                        <td>{{ appointment.patient.name }}</td>
-                                        <td>
-                                            <span class="badge bg-{{ {
-                                                'scheduled': 'warning',
-                                                'completed': 'success',
-                                                'cancelled': 'danger'
-                                            }[appointment.status] }}">
-                                                {{ appointment.status|title }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ url_for('appointments.update_appointment', appointment_id=appointment.id) }}" 
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="card bg-success bg-opacity-10 border-success">
+                                <div class="card-body">
+                                    <h3 class="text-success">{{ new_patients_today }}</h3>
+                                    <p class="mb-0 text-success fw-bold">New Patients Today</p>
+                                </div>
+                            </div>
                         </div>
-                    {% else %}
-                        <p class="text-muted text-center mb-0">No upcoming appointments in the next 7 days.</p>
-                    {% endif %}
+                        <div class="col-6">
+                            <div class="card bg-info bg-opacity-10 border-info">
+                                <div class="card-body">
+                                    <h3 class="text-info">{{ existing_patients_today }}</h3>
+                                    <p class="mb-0 text-info fw-bold">Existing Patients Today</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -438,5 +439,20 @@
             });
         }
     });
+
+    function markCompleted(appointmentId) {
+        if (confirm('Mark this appointment as completed?')) {
+            fetch(`/appointments/${appointmentId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                }
+            });
+        }
+    }
 </script>
 {% endblock %} 

@@ -44,8 +44,81 @@
                                 </div>
                             </div>
                         </div>
+                        {% elif current_user.role == 'doctor' %}
+                        <div class="mb-4">
+                            <label class="form-label">Search Patient</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="patient_search" 
+                                       placeholder="Search by name, phone number, or patient ID..."
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clear_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="patient_id" name="patient_id" required>
+                            <div class="invalid-feedback">
+                                Please select a patient.
+                            </div>
+                            <!-- Search Results Dropdown -->
+                            <div id="search_results" class="list-group mt-2 shadow-sm" 
+                                 style="display: none; max-height: 200px; overflow-y: auto; position: absolute; width: 95%; z-index: 1000; background: white;">
+                            </div>
+                            <!-- Selected Patient Info -->
+                            <div id="selected_patient_info" class="mt-2" style="display: none;">
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-user-check me-2"></i>
+                                    Selected Patient: <strong id="selected_patient_name"></strong>
+                                    <br>
+                                    <small class="text-muted" id="selected_patient_details"></small>
+                                </div>
+                            </div>
+                            
+                            <!-- Doctor Info for Doctor Role -->
+                            <div class="alert alert-success mb-4">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-user-md me-1"></i>Creating Appointment As
+                                </h6>
+                                <p class="mb-0">
+                                    <strong>Dr. {{ current_user.name }}</strong><br>
+                                    <small class="text-muted">{{ current_user.doctor.specialization }}</small>
+                                </p>
+                            </div>
+                        </div>
                         {% endif %}
 
+                        <div class="mb-4">
+                            <label for="patient_type" class="form-label">Patient Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="patient_type" name="patient_type" required>
+                                <option value="">Select patient type</option>
+                                <option value="new">New Patient</option>
+                                <option value="existing">Existing Patient</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle text-primary"></i>
+                                Select "New Patient" for first-time visitors or "Existing Patient" for returning patients
+                            </div>
+                            <div class="invalid-feedback">Please select patient type.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="priority" name="priority" required>
+                                <option value="">Select priority level</option>
+                                <option value="high">High Priority</option>
+                                <option value="medium" selected>Medium Priority</option>
+                                <option value="low">Low Priority</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                High priority appointments require immediate attention, medium for regular cases, low for routine follow-ups
+                            </div>
+                            <div class="invalid-feedback">Please select priority level.</div>
+                        </div>
+
+                        {% if current_user.role != 'doctor' %}
                         <div class="mb-3">
                             <label for="doctor_id" class="form-label">Doctor</label>
                             <select class="form-select" id="doctor_id" name="doctor_id" required>
@@ -55,6 +128,10 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        {% else %}
+                        <!-- Hidden field for doctor when current user is a doctor -->
+                        <input type="hidden" id="doctor_id" name="doctor_id" value="{{ current_user.doctor.id }}">
+                        {% endif %}
 
                         <div class="mb-3">
                             <label for="date" class="form-label">Date</label>
@@ -238,8 +315,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    doctorSelect.addEventListener('change', updateAvailableSlots);
+    // Add event listeners only if doctor select is visible
+    if (doctorSelect.type !== 'hidden') {
+        doctorSelect.addEventListener('change', updateAvailableSlots);
+    }
     dateInput.addEventListener('change', updateAvailableSlots);
+
+    // If doctor is pre-selected (hidden field), trigger availability check when date changes
+    {% if current_user.role == 'doctor' %}
+    dateInput.addEventListener('change', function() {
+        if (dateInput.value) {
+            updateAvailableSlots();
+        }
+    });
+    {% endif %}
 
     // Form validation
     const form = document.querySelector('.needs-validation');

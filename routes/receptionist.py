@@ -22,8 +22,10 @@ def receptionist_required(f):
 @login_required
 @receptionist_required
 def patients_list():
-    # Get search parameters
+    # Get search and pagination parameters
     search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 100  # Maximum 100 patients per page
     
     # Base query for patients
     query = User.query.filter_by(role='patient')
@@ -37,8 +39,23 @@ def patients_list():
             (User.patient_number.like(search_term))
         )
     
-    # Get all patients ordered by name
-    patients = query.order_by(User.name).all()
+    # Order by name for consistent pagination
+    query = query.order_by(User.name)
+    
+    # Handle pagination
+    try:
+        patients = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        # If page is out of range, redirect to the last page
+        if page > patients.pages and patients.pages > 0:
+            return redirect(url_for('receptionist.patients_list', page=patients.pages, search=search))
+            
+    except Exception as e:
+        # Log the error
+        print(f"Pagination error: {str(e)}")
+        # Fallback to first page
+        patients = query.paginate(page=1, per_page=per_page, error_out=False)
+        flash('An error occurred with pagination. Showing first page.', 'warning')
     
     return render_template('receptionist/patients_list.html', patients=patients, search=search)
 
