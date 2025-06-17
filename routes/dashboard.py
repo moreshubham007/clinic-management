@@ -103,7 +103,7 @@ def patient_dashboard():
         patient_id=current_user.id
     ).order_by(Question.created_at.desc()).limit(5).all()
     
-    return render_template('dashboard/patient_dashboard.html',
+    return render_template('dashboard/patient.html',
                          upcoming_appointments=upcoming_appointments,
                          recent_cases=recent_cases,
                          recent_questions=recent_questions)

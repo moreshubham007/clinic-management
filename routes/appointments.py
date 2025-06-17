@@ -4,6 +4,7 @@ from app import db
 from models import User, Doctor, Appointment, Case, CaseHistory
 from datetime import datetime, timedelta
 from functools import wraps
+from flask import current_app
 
 appointments_bp = Blueprint('appointments', __name__)
 
@@ -154,28 +155,82 @@ def create_appointment():
 @appointments_bp.route('/<int:appointment_id>/cancel', methods=['POST'])
 @login_required
 def cancel_appointment(appointment_id):
-    appointment = Appointment.query.get_or_404(appointment_id)
-    
-    # Check permissions
-    if current_user.role not in ['admin', 'receptionist', 'doctor'] and current_user.id != appointment.patient_id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    appointment.status = 'cancelled'
-    db.session.commit()
-    
-    return jsonify({'success': True})
+    """
+    Cancel appointment API
+    ---
+    tags:
+      - Appointments
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: appointment_id
+        required: true
+        type: integer
+    responses:
+      200:
+        description: Appointment cancelled successfully
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Appointment not found
+    """
+    try:
+        appointment = Appointment.query.get_or_404(appointment_id)
+        
+        # Check permissions
+        if current_user.role not in ['admin', 'receptionist', 'doctor'] and current_user.id != appointment.patient_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        appointment.status = 'cancelled'
+        db.session.commit()
+        
+        return jsonify({'message': 'Appointment cancelled successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error cancelling appointment: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @appointments_bp.route('/<int:appointment_id>/complete', methods=['POST'])
 @login_required
 def complete_appointment(appointment_id):
-    if current_user.role not in ['admin', 'receptionist', 'doctor']:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    appointment = Appointment.query.get_or_404(appointment_id)
-    appointment.status = 'completed'
-    db.session.commit()
-    
-    return jsonify({'success': True})
+    """
+    Complete appointment API
+    ---
+    tags:
+      - Appointments
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: appointment_id
+        required: true
+        type: integer
+    responses:
+      200:
+        description: Appointment completed successfully
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Appointment not found
+    """
+    try:
+        if current_user.role not in ['admin', 'receptionist', 'doctor']:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        appointment = Appointment.query.get_or_404(appointment_id)
+        appointment.status = 'completed'
+        db.session.commit()
+        
+        return jsonify({'message': 'Appointment completed successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error completing appointment: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @appointments_bp.route('/doctor/<int:doctor_id>/availability')
 def get_doctor_availability(doctor_id):
@@ -380,4 +435,252 @@ def search_patient():
         'email': patient.email,
         'mobile_number': patient.mobile_number,
         'patient_number': patient.patient_number
-    } for patient in patients]) 
+    } for patient in patients])
+
+@appointments_bp.route('/api/appointments', methods=['POST'])
+@login_required
+def create_appointment_api():
+    """
+    Create Appointment API
+    ---
+    tags:
+      - Appointments
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - doctor_id
+            - datetime
+          properties:
+            doctor_id:
+              type: integer
+              description: ID of the doctor
+            patient_id:
+              type: integer
+              description: ID of the patient (required for admin/receptionist/doctor)
+            datetime:
+              type: string
+              format: date-time
+              description: Appointment date and time
+            patient_type:
+              type: string
+              enum: [new, existing]
+              description: Type of patient
+            priority:
+              type: string
+              enum: [low, medium, high]
+              description: Priority level of the appointment
+            notes:
+              type: string
+              description: Additional notes
+            remarks:
+              type: string
+              description: Doctor's remarks (only for doctors)
+    responses:
+      201:
+        description: Appointment created successfully
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not data.get('doctor_id') or not data.get('datetime'):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        # Role-based validation
+        if current_user.role == 'patient':
+            # Patients can only create appointments for themselves
+            patient_id = current_user.id
+        elif current_user.role in ['admin', 'receptionist', 'doctor']:
+            # These roles can specify a patient
+            patient_id = data.get('patient_id')
+            if not patient_id:
+                return jsonify({'error': 'Patient ID is required'}), 400
+        else:
+            return jsonify({'error': 'Unauthorized role'}), 403
+            
+        # For doctors, they can only create appointments for themselves
+        if current_user.role == 'doctor' and str(data['doctor_id']) != str(current_user.doctor.id):
+            return jsonify({'error': 'Doctors can only create appointments for themselves'}), 403
+            
+        # Validate datetime
+        try:
+            appointment_datetime = datetime.strptime(data['datetime'], '%Y-%m-%d %H:%M')
+            if appointment_datetime < datetime.now():
+                return jsonify({'error': 'Appointment time must be in the future'}), 400
+        except ValueError:
+            return jsonify({'error': 'Invalid datetime format. Use YYYY-MM-DD HH:MM'}), 400
+            
+        # Check doctor availability
+        existing_appointment = Appointment.query.filter_by(
+            doctor_id=data['doctor_id'],
+            datetime=appointment_datetime,
+            status='scheduled'
+        ).first()
+        
+        if existing_appointment:
+            return jsonify({'error': 'This time slot is already booked'}), 400
+            
+        # Create appointment
+        appointment = Appointment(
+            doctor_id=data['doctor_id'],
+            patient_id=patient_id,
+            datetime=appointment_datetime,
+            patient_type=data.get('patient_type', 'existing'),
+            priority=data.get('priority', 'medium'),
+            notes=data.get('notes'),
+            remarks=data.get('remarks') if current_user.role == 'doctor' else None,
+            status='scheduled'
+        )
+        
+        db.session.add(appointment)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Appointment created successfully',
+            'appointment': {
+                'id': appointment.id,
+                'datetime': appointment.datetime.strftime('%Y-%m-%d %H:%M'),
+                'status': appointment.status,
+                'patient_type': appointment.patient_type,
+                'priority': appointment.priority
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating appointment: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
+
+@appointments_bp.route('/api/appointments/<int:appointment_id>', methods=['PUT'])
+@login_required
+def update_appointment_api(appointment_id):
+    """
+    Update Appointment API
+    ---
+    tags:
+      - Appointments
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: appointment_id
+        required: true
+        type: integer
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            datetime:
+              type: string
+              format: date-time
+            doctor_id:
+              type: integer
+            patient_id:
+              type: integer
+            status:
+              type: string
+              enum: [scheduled, completed, cancelled]
+            patient_type:
+              type: string
+              enum: [new, existing]
+            priority:
+              type: string
+              enum: [low, medium, high]
+            notes:
+              type: string
+            remarks:
+              type: string
+    responses:
+      200:
+        description: Appointment updated successfully
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Appointment not found
+    """
+    try:
+        appointment = Appointment.query.get_or_404(appointment_id)
+        data = request.get_json()
+        
+        # Check permissions
+        can_edit = False
+        if current_user.role == 'admin':
+            can_edit = True
+        elif appointment.status == 'completed':
+            if current_user.role == 'doctor' and current_user.doctor.id == appointment.doctor_id:
+                can_edit = True
+        else:
+            if current_user.role in ['admin', 'receptionist'] or \
+               (current_user.role == 'doctor' and current_user.doctor.id == appointment.doctor_id):
+                can_edit = True
+                
+        if not can_edit:
+            return jsonify({'error': 'You do not have permission to edit this appointment'}), 403
+            
+        # Update fields
+        if 'datetime' in data:
+            try:
+                appointment.datetime = datetime.strptime(data['datetime'], '%Y-%m-%d %H:%M')
+                if appointment.datetime < datetime.now():
+                    return jsonify({'error': 'Appointment time must be in the future'}), 400
+            except ValueError:
+                return jsonify({'error': 'Invalid datetime format'}), 400
+                
+        if 'doctor_id' in data and current_user.role in ['admin', 'receptionist']:
+            appointment.doctor_id = data['doctor_id']
+            
+        if 'patient_id' in data and current_user.role in ['admin', 'receptionist']:
+            appointment.patient_id = data['patient_id']
+            
+        if 'status' in data and current_user.role in ['admin', 'receptionist', 'doctor']:
+            if data['status'] not in ['scheduled', 'completed', 'cancelled']:
+                return jsonify({'error': 'Invalid status'}), 400
+            appointment.status = data['status']
+            
+        if 'patient_type' in data:
+            appointment.patient_type = data['patient_type']
+            
+        if 'priority' in data:
+            appointment.priority = data['priority']
+            
+        if 'notes' in data:
+            appointment.notes = data['notes']
+            
+        if 'remarks' in data and current_user.role == 'doctor':
+            appointment.remarks = data['remarks']
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Appointment updated successfully',
+            'appointment': {
+                'id': appointment.id,
+                'datetime': appointment.datetime.strftime('%Y-%m-%d %H:%M'),
+                'status': appointment.status,
+                'patient_type': appointment.patient_type,
+                'priority': appointment.priority
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating appointment: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500 

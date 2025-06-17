@@ -111,7 +111,12 @@ from routes.cases import cases_bp
 from routes.receptionist import receptionist_bp
 from routes.api.patient import patient_api_bp
 
+# Register auth blueprint for web routes
 app.register_blueprint(auth_bp, url_prefix='/auth')
+
+# Register auth blueprint for API routes
+app.register_blueprint(auth_bp, url_prefix='/api/auth', name='auth_api')
+
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(patient_bp, url_prefix='/patient')

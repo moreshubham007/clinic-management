@@ -33,19 +33,67 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
 
-@auth_bp.route('/api/login', methods=['POST'])
+@auth_bp.route('/api/auth/login', methods=['POST'])
 @csrf.exempt  # Disable CSRF for API endpoint
 def api_login():
+    """
+    User Login API
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              format: email
+            password:
+              type: string
+              format: password
+    responses:
+      200:
+        description: Login successful
+        schema:
+          type: object
+          properties:
+            token:
+              type: string
+            user:
+              type: object
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+                email:
+                  type: string
+                role:
+                  type: string
+      401:
+        description: Invalid credentials
+      400:
+        description: Missing required fields
+    """
     try:
         # Log incoming request
         current_app.logger.info("Received login request")
         
-        # Get and validate JSON data
-        data = request.get_json()
+        # Get data from either JSON or form data
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form
+        
         current_app.logger.debug(f"Request data: {data}")
         
         if not data:
-            current_app.logger.error("No JSON data received")
+            current_app.logger.error("No data received")
             return jsonify({'error': 'No data provided'}), 400
         
         email = data.get('email')
@@ -60,10 +108,15 @@ def api_login():
         current_app.logger.debug(f"User found: {user is not None}")
         
         if user and check_password_hash(user.password_hash, password):
+            if not user.is_active:
+                current_app.logger.warning(f"Login attempt for disabled account: {email}")
+                return jsonify({'error': 'Account is disabled'}), 403
+                
             # Generate JWT token
             token = jwt.encode({
                 'user_id': user.id,
                 'email': user.email,
+                'role': user.role,
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
             }, current_app.config['SECRET_KEY'], algorithm='HS256')
             
@@ -75,7 +128,7 @@ def api_login():
                     'id': user.id,
                     'name': user.name,
                     'email': user.email,
-                    'patient_number': user.patient_number
+                    'role': user.role
                 }
             }), 200
         
