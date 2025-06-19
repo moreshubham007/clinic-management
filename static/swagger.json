@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Clinic Management System API",
-    "description": "API documentation for the Patient Mobile Application",
+    "description": "API documentation for the Clinic Management System",
     "version": "1.0.0"
   },
   "basePath": "/api",
@@ -42,28 +42,34 @@
     {
       "name": "Feedback",
       "description": "Doctor feedback management"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative endpoints"
     }
   ],
   "paths": {
-    "/patient/login": {
+    "/auth/login": {
       "post": {
         "tags": ["Authentication"],
-        "summary": "Patient Login",
-        "parameters": [{
-          "in": "body",
-          "name": "body",
-          "required": true,
-          "schema": {
-            "type": "object",
-            "required": ["email", "password"],
-            "properties": {
-              "email": {
-                "type": "string",
-                "description": "Patient's email address"
-              },
-              "password": {
-                "type": "string",
-                "description": "Patient's password"
+        "summary": "User login",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["email", "password"],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "password": {
+                  "type": "string",
+                  "format": "password"
+                }
               }
             }
           }
@@ -89,7 +95,7 @@
                     "email": {
                       "type": "string"
                     },
-                    "patient_number": {
+                    "role": {
                       "type": "string"
                     }
                   }
@@ -416,8 +422,7 @@
                   "type": "string"
                 },
                 "is_private": {
-                  "type": "boolean",
-                  "default": false
+                  "type": "boolean"
                 }
               }
             }
@@ -425,18 +430,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Question created successfully",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string"
-                },
-                "id": {
-                  "type": "integer"
-                }
-              }
-            }
+            "description": "Question created successfully"
           }
         }
       }
@@ -471,8 +465,7 @@
                   "type": "string"
                 },
                 "is_anonymous": {
-                  "type": "boolean",
-                  "default": false
+                  "type": "boolean"
                 }
               }
             }
@@ -481,9 +474,210 @@
         "responses": {
           "201": {
             "description": "Feedback submitted successfully"
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get all users",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Create a new user",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["name", "email", "password", "role"],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "password": {
+                  "type": "string",
+                  "format": "password"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": ["admin", "doctor", "patient", "receptionist"]
+                },
+                "is_active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          }
+        }
+      }
+    },
+    "/admin/users/{user_id}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get user details",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update user",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "type": "integer"
           },
-          "400": {
-            "description": "Invalid input"
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["name", "email", "role"],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": ["admin", "doctor", "patient", "receptionist"]
+                },
+                "is_active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete user",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          }
+        }
+      }
+    },
+    "/admin/next-patient-number": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get next available patient number",
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Next patient number",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "patient_number": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

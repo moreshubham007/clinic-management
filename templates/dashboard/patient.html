@@ -46,18 +46,12 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <div class="btn-group">
-                                                <a href="{{ url_for('appointments.update_appointment', id=appointment.id) }}"
-                                                   class="btn btn-sm btn-info">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                {% if appointment.status == 'scheduled' %}
-                                                <button type="button" class="btn btn-sm btn-danger"
-                                                        onclick="cancelAppointment({{ appointment.id }})">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                                {% endif %}
-                                            </div>
+                                            {% if appointment.status == 'scheduled' %}
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                    onclick="cancelAppointment({{ appointment.id }})">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -110,7 +104,8 @@
                                             }[case.status] }}">
                                                 {{ case.status.capitalize() }}
                                             </span>
-                                            {% if not case.feedback_given %}
+                                            {% set has_feedback = case.doctor.feedback_received|selectattr('patient_id', 'equalto', current_user.id)|list %}
+                                            {% if not has_feedback %}
                                             <a href="{{ url_for('patient.give_feedback', doctor_id=case.doctor_id) }}"
                                                class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-star"></i> Give Feedback
@@ -140,9 +135,6 @@
                     <div class="d-grid gap-2">
                         <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
                             <i class="fas fa-calendar-plus"></i> Book Appointment
-                        </a>
-                        <a href="{{ url_for('patient.ask_question') }}" class="btn btn-info">
-                            <i class="fas fa-question-circle"></i> Ask Question
                         </a>
                         <a href="{{ url_for('patient.my_questions') }}" class="btn btn-outline-primary">
                             <i class="fas fa-comments"></i> View My Questions
@@ -216,7 +208,7 @@
 function cancelAppointment(appointmentId) {
     const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
     const form = document.getElementById('cancelForm');
-    form.action = "{{ url_for('appointments.update_appointment', id=0) }}".replace('0', appointmentId);
+    form.action = "{{ url_for('appointments.cancel_appointment', appointment_id=0) }}".replace('0', appointmentId);
     modal.show();
 }
 </script>

@@ -62,23 +62,60 @@ def list_cases():
 @login_required
 @doctor_required
 def search_patients():
-    query = request.args.get('q', '').strip()
-    if len(query) < 2:
-        return jsonify([])
-    
-    patients = User.query.filter_by(role='patient')\
-        .filter(
-            (User.name.ilike(f'%{query}%')) |
-            (User.email.ilike(f'%{query}%'))
-        )\
-        .limit(10)\
-        .all()
-    
-    return jsonify([{
-        'id': patient.id,
-        'name': patient.name,
-        'email': patient.email
-    } for patient in patients])
+    """
+    Search patients API
+    ---
+    tags:
+      - Cases
+    security:
+      - Bearer: []
+    parameters:
+      - in: query
+        name: q
+        type: string
+        description: Search query (minimum 2 characters)
+    responses:
+      200:
+        description: List of matching patients
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              email:
+                type: string
+      400:
+        description: Invalid query
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
+    try:
+        query = request.args.get('q', '').strip()
+        if len(query) < 2:
+            return jsonify({'error': 'Search query must be at least 2 characters'}), 400
+        
+        patients = User.query.filter_by(role='patient')\
+            .filter(
+                (User.name.ilike(f'%{query}%')) |
+                (User.email.ilike(f'%{query}%'))
+            )\
+            .limit(10)\
+            .all()
+        
+        return jsonify([{
+            'id': patient.id,
+            'name': patient.name,
+            'email': patient.email
+        } for patient in patients]), 200
+    except Exception as e:
+        current_app.logger.error(f"Error searching patients: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @cases_bp.route('/cases/create', methods=['GET', 'POST'])
 @login_required

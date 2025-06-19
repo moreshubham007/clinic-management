@@ -340,6 +340,28 @@ def toggle_user(user_id):
 @login_required
 @admin_required
 def next_patient_number():
+    """
+    Get next available patient number API
+    ---
+    tags:
+      - Admin
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Next patient number
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+            patient_number:
+              type: string
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         # Get the last patient number
         last_patient = User.query.filter(
@@ -365,113 +387,116 @@ def next_patient_number():
         return jsonify({
             'status': 'success',
             'patient_number': patient_number
-        })
+        }), 200
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500 
+        current_app.logger.error(f"Error getting next patient number: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
-@admin_bp.route('/api/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
+@admin_bp.route('/api/users', methods=['GET'])
 @login_required
 @admin_required
-def user_api(user_id):
-    """API endpoint for managing individual users"""
-    print(f"API request: {request.method} for user {user_id}")
-    
-    user = User.query.get_or_404(user_id)
-    
-    if request.method == 'GET':
-        # Return user data for editing
-        return jsonify({
+def get_users():
+    """
+    Get all users API
+    ---
+    tags:
+      - Admin
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: List of users
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              email:
+                type: string
+              role:
+                type: string
+              is_active:
+                type: boolean
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
+    try:
+        users = User.query.all()
+        return jsonify([{
             'id': user.id,
             'name': user.name,
             'email': user.email,
             'role': user.role,
             'is_active': user.is_active
-        })
-        
-    elif request.method == 'PUT':
-        # Update user
-        data = request.get_json()
-        print(f"PUT data: {data}")
-        
-        # Validate data
-        if not data or not all(k in data for k in ('name', 'email', 'role')):
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-            
-        # Check if email exists and belongs to another user
-        existing_user = User.query.filter_by(email=data['email']).first()
-        if existing_user and existing_user.id != user.id:
-            return jsonify({'success': False, 'message': 'Email already exists'}), 400
-            
-        # Update user
-        user.name = data['name']
-        user.email = data['email']
-        user.role = data['role']
-        user.is_active = data.get('is_active', True)
-        
-        try:
-            db.session.commit()
-            return jsonify({'success': True, 'message': 'User updated successfully'})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'message': str(e)}), 500
-            
-    elif request.method == 'DELETE':
-        print(f"Processing DELETE request for user {user_id}")
-        
-        # Prevent deleting the last admin
-        if user.role == 'admin' and User.query.filter_by(role='admin').count() <= 1:
-            print("Cannot delete the last admin user")
-            return jsonify({
-                'success': False, 
-                'message': 'Cannot delete the last admin user'
-            }), 403
-            
-        # Prevent self-deletion
-        if user.id == current_user.id:
-            print("Cannot delete your own account")
-            return jsonify({
-                'success': False, 
-                'message': 'Cannot delete your own account'
-            }), 403
-            
-        try:
-            # Delete related records first
-            if user.role == 'doctor':
-                doctor = Doctor.query.filter_by(user_id=user.id).first()
-                if doctor:
-                    print(f"Deleting doctor record for user {user_id}")
-                    db.session.delete(doctor)
-                    
-            # Delete the user
-            print(f"Deleting user {user_id}")
-            db.session.delete(user)
-            db.session.commit()
-            print(f"User {user_id} deleted successfully")
-            return jsonify({'success': True, 'message': 'User deleted successfully'})
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error deleting user {user_id}: {str(e)}")
-            return jsonify({'success': False, 'message': str(e)}), 500
+        } for user in users]), 200
+    except Exception as e:
+        current_app.logger.error(f"Error getting users: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @admin_bp.route('/api/users', methods=['POST'])
 @login_required
 @admin_required
 def create_user_api():
-    """API endpoint for creating users"""
-    data = request.get_json()
-    
-    # Validate data
-    if not data or not all(k in data for k in ('name', 'email', 'password', 'role')):
-        return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-        
-    # Check if email exists
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({'success': False, 'message': 'Email already exists'}), 400
-        
+    """
+    Create a new user API
+    ---
+    tags:
+      - Admin
+    security:
+      - Bearer: []
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - email
+            - password
+            - role
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            password:
+              type: string
+              format: password
+            role:
+              type: string
+              enum: [admin, doctor, patient, receptionist]
+            is_active:
+              type: boolean
+    responses:
+      201:
+        description: User created successfully
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
+        data = request.get_json()
+        if not data or not all(k in data for k in ('name', 'email', 'password', 'role')):
+            return jsonify({'error': 'Missing required fields'}), 400
+            
+        if data['role'] not in ['admin', 'doctor', 'patient', 'receptionist']:
+            return jsonify({'error': 'Invalid role'}), 400
+            
+        # Check if email exists
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email already exists'}), 400
+            
         # Create user
         user = User(
             name=data['name'],
@@ -494,13 +519,158 @@ def create_user_api():
             
         db.session.commit()
         return jsonify({
-            'success': True, 
             'message': 'User created successfully',
             'id': user.id
-        })
+        }), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        current_app.logger.error(f"Error creating user: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
+
+@admin_bp.route('/api/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
+@admin_required
+def user_api(user_id):
+    """
+    User management API
+    ---
+    tags:
+      - Admin
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: user_id
+        required: true
+        type: integer
+    get:
+      description: Get user details
+      responses:
+        200:
+          description: User details
+          schema:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              email:
+                type: string
+              role:
+                type: string
+              is_active:
+                type: boolean
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: User not found
+    put:
+      description: Update user
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+              - email
+              - role
+            properties:
+              name:
+                type: string
+              email:
+                type: string
+                format: email
+              role:
+                type: string
+                enum: [admin, doctor, patient, receptionist]
+              is_active:
+                type: boolean
+      responses:
+        200:
+          description: User updated successfully
+        400:
+          description: Invalid input
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: User not found
+    delete:
+      description: Delete user
+      responses:
+        200:
+          description: User deleted successfully
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: User not found
+    """
+    try:
+        user = User.query.get_or_404(user_id)
+        
+        if request.method == 'GET':
+            return jsonify({
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'role': user.role,
+                'is_active': user.is_active
+            }), 200
+            
+        elif request.method == 'PUT':
+            data = request.get_json()
+            if not data or not all(k in data for k in ('name', 'email', 'role')):
+                return jsonify({'error': 'Missing required fields'}), 400
+                
+            if data['role'] not in ['admin', 'doctor', 'patient', 'receptionist']:
+                return jsonify({'error': 'Invalid role'}), 400
+                
+            # Check if email exists and belongs to another user
+            existing_user = User.query.filter_by(email=data['email']).first()
+            if existing_user and existing_user.id != user.id:
+                return jsonify({'error': 'Email already exists'}), 400
+                
+            # Update user
+            user.name = data['name']
+            user.email = data['email']
+            user.role = data['role']
+            user.is_active = data.get('is_active', True)
+            
+            db.session.commit()
+            return jsonify({'message': 'User updated successfully'}), 200
+            
+        elif request.method == 'DELETE':
+            # Prevent deleting the last admin
+            if user.role == 'admin' and User.query.filter_by(role='admin').count() <= 1:
+                return jsonify({'error': 'Cannot delete the last admin user'}), 403
+                
+            # Prevent self-deletion
+            if user.id == current_user.id:
+                return jsonify({'error': 'Cannot delete your own account'}), 403
+                
+            # Delete related records first
+            if user.role == 'doctor':
+                doctor = Doctor.query.filter_by(user_id=user.id).first()
+                if doctor:
+                    db.session.delete(doctor)
+                    
+            # Delete the user
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({'message': 'User deleted successfully'}), 200
+            
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error managing user: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 @admin_bp.route('/delete-user/<int:user_id>', methods=['POST'])
 @login_required
