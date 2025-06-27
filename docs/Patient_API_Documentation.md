@@ -104,7 +104,7 @@ Authorization: Bearer YOUR_TOKEN_HERE
   }
   ```
 
-### 3. Appointments
+### 3. Appointment Management
 
 #### Get All Appointments
 - **URL:** `GET /api/patient/appointments`
@@ -123,18 +123,174 @@ Authorization: Bearer YOUR_TOKEN_HERE
         "id": 1,
         "name": "Dr. Smith"
       },
-      "notes": "Regular checkup"
+      "notes": "Regular checkup",
+      "patient_type": "existing",
+      "priority": "medium",
+      "created_at": "2025-01-10 14:30"
     }
   ]
   ```
 
-#### Get Appointments by Status
-- **URL:** `GET /api/patient/appointments?status=scheduled`
-- **Description:** Retrieve appointments filtered by status
+#### Create New Appointment
+- **URL:** `POST /api/patient/appointments`
+- **Description:** Create a new appointment with a doctor
 - **Authentication:** Required (Bearer token)
-- **Response (200):** Same as Get All Appointments
+- **Request Body:**
+  ```json
+  {
+    "doctor_id": 1,
+    "datetime": "2025-01-20 14:00",
+    "notes": "Follow-up consultation",
+    "patient_type": "existing",
+    "priority": "medium"
+  }
+  ```
+- **Response (201):**
+  ```json
+  {
+    "message": "Appointment created successfully",
+    "appointment": {
+      "id": 2,
+      "datetime": "2025-01-20 14:00",
+      "doctor": {
+        "id": 1,
+        "name": "Dr. Smith"
+      },
+      "status": "scheduled"
+    }
+  }
+  ```
+- **Response (409):**
+  ```json
+  {
+    "message": "This time slot is already booked"
+  }
+  ```
 
-### 4. Medical Cases
+#### Get Appointment Details
+- **URL:** `GET /api/patient/appointments/{appointment_id}`
+- **Description:** Get detailed information about a specific appointment
+- **Authentication:** Required (Bearer token)
+- **Response (200):**
+  ```json
+  {
+    "id": 1,
+    "datetime": "2025-01-15 10:00",
+    "status": "scheduled",
+    "doctor": {
+      "id": 1,
+      "name": "Dr. Smith",
+      "specialization": "Cardiology"
+    },
+    "notes": "Regular checkup",
+    "patient_type": "existing",
+    "priority": "medium",
+    "created_at": "2025-01-10 14:30",
+    "updated_at": "2025-01-12 09:15"
+  }
+  ```
+
+#### Update Appointment
+- **URL:** `PUT /api/patient/appointments/{appointment_id}`
+- **Description:** Update an existing appointment (only scheduled appointments)
+- **Authentication:** Required (Bearer token)
+- **Request Body:**
+  ```json
+  {
+    "datetime": "2025-01-20 15:00",
+    "notes": "Updated consultation notes",
+    "priority": "high"
+  }
+  ```
+- **Response (200):**
+  ```json
+  {
+    "message": "Appointment updated successfully",
+    "appointment": {
+      "id": 1,
+      "datetime": "2025-01-20 15:00",
+      "status": "scheduled"
+    }
+  }
+  ```
+
+#### Cancel Appointment
+- **URL:** `DELETE /api/patient/appointments/{appointment_id}`
+- **Description:** Cancel a scheduled appointment
+- **Authentication:** Required (Bearer token)
+- **Response (200):**
+  ```json
+  {
+    "message": "Appointment cancelled successfully"
+  }
+  ```
+
+#### Get Upcoming Appointments
+- **URL:** `GET /api/patient/appointments/upcoming`
+- **Description:** Get upcoming scheduled appointments
+- **Authentication:** Required (Bearer token)
+- **Query Parameters:**
+  - `days` (optional): Number of days to look ahead (default: 7)
+- **Response (200):**
+  ```json
+  [
+    {
+      "id": 1,
+      "datetime": "2025-01-15 10:00",
+      "status": "scheduled",
+      "doctor": {
+        "id": 1,
+        "name": "Dr. Smith"
+      },
+      "notes": "Regular checkup",
+      "days_until": 3
+    }
+  ]
+  ```
+
+#### Get Appointment History
+- **URL:** `GET /api/patient/appointments/history`
+- **Description:** Get past appointments
+- **Authentication:** Required (Bearer token)
+- **Query Parameters:**
+  - `limit` (optional): Number of appointments to return (default: 10)
+  - `status` (optional): Filter by status (`completed`, `cancelled`)
+- **Response (200):**
+  ```json
+  [
+    {
+      "id": 1,
+      "datetime": "2025-01-10 10:00",
+      "status": "completed",
+      "doctor": {
+        "id": 1,
+        "name": "Dr. Smith"
+      },
+      "notes": "Regular checkup",
+      "days_ago": 5
+    }
+  ]
+  ```
+
+### 4. Doctor Management
+
+#### Get Available Doctors
+- **URL:** `GET /api/patient/doctors`
+- **Description:** Get list of all available doctors
+- **Authentication:** Required (Bearer token)
+- **Response (200):**
+  ```json
+  [
+    {
+      "id": 1,
+      "name": "Dr. Smith",
+      "specialization": "Cardiology",
+      "email": "dr.smith@hospital.com"
+    }
+  ]
+  ```
+
+### 5. Medical Cases
 
 #### Get Patient Cases
 - **URL:** `GET /api/patient/cases`
@@ -157,7 +313,7 @@ Authorization: Bearer YOUR_TOKEN_HERE
   ]
   ```
 
-### 5. Questions & Answers
+### 6. Questions & Answers
 
 #### Get Patient Questions
 - **URL:** `GET /api/patient/questions`
@@ -172,7 +328,6 @@ Authorization: Bearer YOUR_TOKEN_HERE
       "answer": "Common side effects include dizziness and nausea...",
       "created_at": "2025-01-12T14:30:00",
       "answered_at": "2025-01-12T15:00:00",
-      "is_private": false,
       "doctor": {
         "id": 1,
         "name": "Dr. Smith"
@@ -197,11 +352,11 @@ Authorization: Bearer YOUR_TOKEN_HERE
   ```json
   {
     "message": "Question submitted successfully",
-    "question_id": 1
+    "id": 1
   }
   ```
 
-### 6. Feedback
+### 7. Feedback
 
 #### Submit Feedback
 - **URL:** `POST /api/patient/feedback`
@@ -255,6 +410,13 @@ Authorization: Bearer YOUR_TOKEN_HERE
 }
 ```
 
+#### 409 Conflict
+```json
+{
+  "message": "This time slot is already booked"
+}
+```
+
 #### 500 Internal Server Error
 ```json
 {
@@ -283,23 +445,43 @@ curl -X GET http://127.0.0.1:5000/api/patient/profile \
   -H "Content-Type: application/json"
 ```
 
-#### 3. Get Appointments
+#### 3. Create Appointment
 ```bash
-curl -X GET http://127.0.0.1:5000/api/patient/appointments \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json"
-```
-
-#### 4. Ask Question
-```bash
-curl -X POST http://127.0.0.1:5000/api/patient/questions \
+curl -X POST http://127.0.0.1:5000/api/patient/appointments \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "doctor_id": 1,
-    "question": "What are the side effects?",
-    "is_private": false
+    "datetime": "2025-01-20 14:00",
+    "notes": "Follow-up consultation",
+    "patient_type": "existing",
+    "priority": "medium"
   }'
+```
+
+#### 4. Get Upcoming Appointments
+```bash
+curl -X GET http://127.0.0.1:5000/api/patient/appointments/upcoming?days=7 \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json"
+```
+
+#### 5. Update Appointment
+```bash
+curl -X PUT http://127.0.0.1:5000/api/patient/appointments/1 \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "datetime": "2025-01-20 15:00",
+    "notes": "Updated consultation notes"
+  }'
+```
+
+#### 6. Cancel Appointment
+```bash
+curl -X DELETE http://127.0.0.1:5000/api/patient/appointments/1 \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json"
 ```
 
 ### Python Examples
@@ -319,10 +501,28 @@ def login(email, password):
     )
     return response.json()
 
-# 2. Get profile
-def get_profile(token):
+# 2. Create appointment
+def create_appointment(token, doctor_id, datetime_str, notes=None):
+    response = requests.post(
+        f"{BASE_URL}/api/patient/appointments",
+        json={
+            "doctor_id": doctor_id,
+            "datetime": datetime_str,
+            "notes": notes,
+            "patient_type": "existing",
+            "priority": "medium"
+        },
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+    )
+    return response.json()
+
+# 3. Get upcoming appointments
+def get_upcoming_appointments(token, days=7):
     response = requests.get(
-        f"{BASE_URL}/api/patient/profile",
+        f"{BASE_URL}/api/patient/appointments/upcoming?days={days}",
         headers={
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
@@ -333,8 +533,14 @@ def get_profile(token):
 # Usage
 login_data = login("patient@example.com", "password123")
 token = login_data["token"]
-profile = get_profile(token)
-print(profile)
+
+# Create appointment
+appointment = create_appointment(token, 1, "2025-01-20 14:00", "Follow-up consultation")
+print(f"Appointment created: {appointment}")
+
+# Get upcoming appointments
+upcoming = get_upcoming_appointments(token)
+print(f"Upcoming appointments: {upcoming}")
 ```
 
 ### JavaScript Examples
@@ -354,9 +560,28 @@ async function login(email, password) {
     return response.json();
 }
 
-// 2. Get profile
-async function getProfile(token) {
-    const response = await fetch(`${BASE_URL}/api/patient/profile`, {
+// 2. Create appointment
+async function createAppointment(token, doctorId, datetime, notes) {
+    const response = await fetch(`${BASE_URL}/api/patient/appointments`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            doctor_id: doctorId,
+            datetime: datetime,
+            notes: notes,
+            patient_type: 'existing',
+            priority: 'medium'
+        })
+    });
+    return response.json();
+}
+
+// 3. Get upcoming appointments
+async function getUpcomingAppointments(token, days = 7) {
+    const response = await fetch(`${BASE_URL}/api/patient/appointments/upcoming?days=${days}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -369,9 +594,13 @@ async function getProfile(token) {
 login('patient@example.com', 'password123')
     .then(data => {
         const token = data.token;
-        return getProfile(token);
+        return createAppointment(token, 1, '2025-01-20 14:00', 'Follow-up consultation');
     })
-    .then(profile => console.log(profile));
+    .then(appointment => {
+        console.log('Appointment created:', appointment);
+        return getUpcomingAppointments(token);
+    })
+    .then(upcoming => console.log('Upcoming appointments:', upcoming));
 ```
 
 ## Postman Collection
@@ -438,7 +667,14 @@ A Python test script is available at `test_api.py` that demonstrates:
 - Verify JSON format is correct
 - Ensure Content-Type header is set to `application/json`
 
-#### 4. Token Expired
+#### 4. 409 Conflict Error
+**Problem:** Time slot already booked
+**Solution:**
+- Choose a different time slot
+- Check doctor availability
+- Use the doctors endpoint to get available doctors
+
+#### 5. Token Expired
 **Problem:** Getting 401 errors after successful login
 **Solution:**
 - Tokens expire after 7 days
@@ -517,7 +753,8 @@ For API support and questions:
 - Initial API release
 - JWT authentication
 - Patient profile management
-- Appointment management
+- Complete appointment management (CRUD operations)
+- Doctor availability
 - Medical cases
 - Questions and answers
 - Feedback system 

@@ -3,230 +3,755 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient API Test</title>
+    <title>Patient API Test Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+        .endpoint-card {
+            margin-bottom: 20px;
         }
-        .section {
-            margin: 20px 0;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .form-group {
-            margin: 10px 0;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, button {
-            padding: 10px;
-            margin: 5px 0;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .result {
-            margin-top: 10px;
-            padding: 10px;
+        .response-area {
             background-color: #f8f9fa;
-            border-radius: 3px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
             white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
         }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
+        .success { color: #198754; }
+        .error { color: #dc3545; }
+        .info { color: #0dcaf0; }
+        .token-display {
+            word-break: break-all;
+            font-size: 0.8em;
         }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Patient API Test</h1>
-    
-    <div class="section">
-        <h2>1. Login</h2>
-        <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" id="email" placeholder="patient@example.com">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 bg-light p-4" style="min-height: 100vh;">
+                <h3 class="mb-4">
+                    <i class="fas fa-user-md"></i> Patient API Tester
+                </h3>
+                
+                <!-- Login Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-sign-in-alt"></i> Authentication
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email:</label>
+                            <input type="email" class="form-control" id="email" value="patient@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password:</label>
+                            <input type="password" class="form-control" id="password" value="password123">
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="login()">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </button>
+                        
+                        <div id="tokenInfo" class="mt-3" style="display: none;">
+                            <div class="alert alert-success">
+                                <strong>Token:</strong>
+                                <div class="token-display" id="tokenDisplay"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-list"></i> API Endpoints
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            <a href="#profile" class="list-group-item list-group-item-action" onclick="scrollToSection('profile')">
+                                <i class="fas fa-user"></i> Profile
+                            </a>
+                            <a href="#appointments" class="list-group-item list-group-item-action" onclick="scrollToSection('appointments')">
+                                <i class="fas fa-calendar"></i> Appointments
+                            </a>
+                            <a href="#doctors" class="list-group-item list-group-item-action" onclick="scrollToSection('doctors')">
+                                <i class="fas fa-user-md"></i> Doctors
+                            </a>
+                            <a href="#cases" class="list-group-item list-group-item-action" onclick="scrollToSection('cases')">
+                                <i class="fas fa-notes-medical"></i> Medical Cases
+                            </a>
+                            <a href="#questions" class="list-group-item list-group-item-action" onclick="scrollToSection('questions')">
+                                <i class="fas fa-question-circle"></i> Questions
+                            </a>
+                            <a href="#feedback" class="list-group-item list-group-item-action" onclick="scrollToSection('feedback')">
+                                <i class="fas fa-star"></i> Feedback
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 p-4">
+                <div class="section-header">
+                    <h2><i class="fas fa-flask"></i> Patient API Testing Interface</h2>
+                    <p class="mb-0">Test all Patient API endpoints with this interactive interface</p>
+                </div>
+
+                <!-- Profile Section -->
+                <div id="profile" class="section">
+                    <h3><i class="fas fa-user"></i> Profile Management</h3>
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-user-circle"></i> Get Patient Profile
+                        </div>
+                        <div class="card-body">
+                            <p>Retrieve the authenticated patient's profile information.</p>
+                            <button class="btn btn-primary" onclick="getProfile()">
+                                <i class="fas fa-download"></i> Get Profile
+                            </button>
+                            <div id="profileResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Appointments Section -->
+                <div id="appointments" class="section">
+                    <h3><i class="fas fa-calendar"></i> Appointment Management</h3>
+                    
+                    <!-- Get All Appointments -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Get All Appointments
+                        </div>
+                        <div class="card-body">
+                            <p>Retrieve all appointments for the authenticated patient.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="statusFilter" class="form-label">Status Filter:</label>
+                                    <select class="form-select" id="statusFilter">
+                                        <option value="">All</option>
+                                        <option value="scheduled">Scheduled</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary mt-2" onclick="getAppointments()">
+                                <i class="fas fa-download"></i> Get Appointments
+                            </button>
+                            <div id="appointmentsResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Create Appointment -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-plus"></i> Create New Appointment
+                        </div>
+                        <div class="card-body">
+                            <p>Create a new appointment with a doctor.</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="doctorId" class="form-label">Doctor ID:</label>
+                                    <input type="number" class="form-control" id="doctorId" value="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="appointmentDate" class="form-label">Date & Time:</label>
+                                    <input type="datetime-local" class="form-control" id="appointmentDate">
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label for="appointmentNotes" class="form-label">Notes:</label>
+                                    <textarea class="form-control" id="appointmentNotes" rows="2">Follow-up consultation</textarea>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="patientType" class="form-label">Patient Type:</label>
+                                    <select class="form-select" id="patientType">
+                                        <option value="existing">Existing</option>
+                                        <option value="new">New</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="priority" class="form-label">Priority:</label>
+                                    <select class="form-select" id="priority">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-success mt-2" onclick="createAppointment()">
+                                <i class="fas fa-plus"></i> Create Appointment
+                            </button>
+                            <div id="createAppointmentResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Get Appointment Details -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-info-circle"></i> Get Appointment Details
+                        </div>
+                        <div class="card-body">
+                            <p>Get detailed information about a specific appointment.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="appointmentId" class="form-label">Appointment ID:</label>
+                                    <input type="number" class="form-control" id="appointmentId" value="1">
+                                </div>
+                            </div>
+                            <button class="btn btn-info mt-2" onclick="getAppointmentDetails()">
+                                <i class="fas fa-search"></i> Get Details
+                            </button>
+                            <div id="appointmentDetailsResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Update Appointment -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-edit"></i> Update Appointment
+                        </div>
+                        <div class="card-body">
+                            <p>Update an existing appointment (only scheduled appointments).</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="updateAppointmentId" class="form-label">Appointment ID:</label>
+                                    <input type="number" class="form-control" id="updateAppointmentId" value="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="updateAppointmentDate" class="form-label">New Date & Time:</label>
+                                    <input type="datetime-local" class="form-control" id="updateAppointmentDate">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="updatePriority" class="form-label">Priority:</label>
+                                    <select class="form-select" id="updatePriority">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <label for="updateNotes" class="form-label">Notes:</label>
+                                    <textarea class="form-control" id="updateNotes" rows="2">Updated consultation notes</textarea>
+                                </div>
+                            </div>
+                            <button class="btn btn-warning mt-2" onclick="updateAppointment()">
+                                <i class="fas fa-edit"></i> Update Appointment
+                            </button>
+                            <div id="updateAppointmentResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Cancel Appointment -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-times"></i> Cancel Appointment
+                        </div>
+                        <div class="card-body">
+                            <p>Cancel a scheduled appointment.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="cancelAppointmentId" class="form-label">Appointment ID:</label>
+                                    <input type="number" class="form-control" id="cancelAppointmentId" value="1">
+                                </div>
+                            </div>
+                            <button class="btn btn-danger mt-2" onclick="cancelAppointment()">
+                                <i class="fas fa-times"></i> Cancel Appointment
+                            </button>
+                            <div id="cancelAppointmentResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Get Upcoming Appointments -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-clock"></i> Get Upcoming Appointments
+                        </div>
+                        <div class="card-body">
+                            <p>Get upcoming scheduled appointments.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="upcomingDays" class="form-label">Days Ahead:</label>
+                                    <input type="number" class="form-control" id="upcomingDays" value="7" min="1" max="30">
+                                </div>
+                            </div>
+                            <button class="btn btn-primary mt-2" onclick="getUpcomingAppointments()">
+                                <i class="fas fa-clock"></i> Get Upcoming
+                            </button>
+                            <div id="upcomingAppointmentsResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Get Appointment History -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-history"></i> Get Appointment History
+                        </div>
+                        <div class="card-body">
+                            <p>Get past appointments.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="historyLimit" class="form-label">Limit:</label>
+                                    <input type="number" class="form-control" id="historyLimit" value="10" min="1" max="50">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="historyStatus" class="form-label">Status:</label>
+                                    <select class="form-select" id="historyStatus">
+                                        <option value="">All</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary mt-2" onclick="getAppointmentHistory()">
+                                <i class="fas fa-history"></i> Get History
+                            </button>
+                            <div id="appointmentHistoryResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Doctors Section -->
+                <div id="doctors" class="section">
+                    <h3><i class="fas fa-user-md"></i> Doctor Management</h3>
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Get Available Doctors
+                        </div>
+                        <div class="card-body">
+                            <p>Get list of all available doctors.</p>
+                            <button class="btn btn-primary" onclick="getDoctors()">
+                                <i class="fas fa-download"></i> Get Doctors
+                            </button>
+                            <div id="doctorsResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cases Section -->
+                <div id="cases" class="section">
+                    <h3><i class="fas fa-notes-medical"></i> Medical Cases</h3>
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Get Patient Cases
+                        </div>
+                        <div class="card-body">
+                            <p>Retrieve medical cases for the authenticated patient.</p>
+                            <button class="btn btn-primary" onclick="getCases()">
+                                <i class="fas fa-download"></i> Get Cases
+                            </button>
+                            <div id="casesResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Questions Section -->
+                <div id="questions" class="section">
+                    <h3><i class="fas fa-question-circle"></i> Questions & Answers</h3>
+                    
+                    <!-- Get Questions -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Get Patient Questions
+                        </div>
+                        <div class="card-body">
+                            <p>Retrieve all questions asked by the authenticated patient.</p>
+                            <button class="btn btn-primary" onclick="getQuestions()">
+                                <i class="fas fa-download"></i> Get Questions
+                            </button>
+                            <div id="questionsResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ask Question -->
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-plus"></i> Ask New Question
+                        </div>
+                        <div class="card-body">
+                            <p>Submit a new question to a doctor.</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="questionDoctorId" class="form-label">Doctor ID:</label>
+                                    <input type="number" class="form-control" id="questionDoctorId" value="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="isPrivate" class="form-label">Private Question:</label>
+                                    <select class="form-select" id="isPrivate">
+                                        <option value="false">No</option>
+                                        <option value="true">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <label for="questionText" class="form-label">Question:</label>
+                                    <textarea class="form-control" id="questionText" rows="3">What are the side effects of the prescribed medication?</textarea>
+                                </div>
+                            </div>
+                            <button class="btn btn-success mt-2" onclick="askQuestion()">
+                                <i class="fas fa-plus"></i> Ask Question
+                            </button>
+                            <div id="askQuestionResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feedback Section -->
+                <div id="feedback" class="section">
+                    <h3><i class="fas fa-star"></i> Feedback</h3>
+                    <div class="card endpoint-card">
+                        <div class="card-header">
+                            <i class="fas fa-plus"></i> Submit Feedback
+                        </div>
+                        <div class="card-body">
+                            <p>Submit feedback for a doctor.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="feedbackDoctorId" class="form-label">Doctor ID:</label>
+                                    <input type="number" class="form-control" id="feedbackDoctorId" value="1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="rating" class="form-label">Rating:</label>
+                                    <select class="form-select" id="rating">
+                                        <option value="1">1 Star</option>
+                                        <option value="2">2 Stars</option>
+                                        <option value="3">3 Stars</option>
+                                        <option value="4">4 Stars</option>
+                                        <option value="5" selected>5 Stars</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="isAnonymous" class="form-label">Anonymous:</label>
+                                    <select class="form-select" id="isAnonymous">
+                                        <option value="false">No</option>
+                                        <option value="true">Yes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <label for="feedbackComment" class="form-label">Comment:</label>
+                                    <textarea class="form-control" id="feedbackComment" rows="3">Excellent service and very professional doctor.</textarea>
+                                </div>
+                            </div>
+                            <button class="btn btn-success mt-2" onclick="submitFeedback()">
+                                <i class="fas fa-plus"></i> Submit Feedback
+                            </button>
+                            <div id="feedbackResponse" class="response-area" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" placeholder="password123">
-        </div>
-        <button onclick="login()">Login</button>
-        <div id="loginResult" class="result"></div>
-    </div>
-    
-    <div class="section">
-        <h2>2. Get Profile</h2>
-        <button onclick="getProfile()" id="profileBtn" disabled>Get Profile</button>
-        <div id="profileResult" class="result"></div>
-    </div>
-    
-    <div class="section">
-        <h2>3. Get Appointments</h2>
-        <button onclick="getAppointments()" id="appointmentsBtn" disabled>Get Appointments</button>
-        <div id="appointmentsResult" class="result"></div>
-    </div>
-    
-    <div class="section">
-        <h2>4. Get Cases</h2>
-        <button onclick="getCases()" id="casesBtn" disabled>Get Cases</button>
-        <div id="casesResult" class="result"></div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const BASE_URL = 'http://127.0.0.1:5000';
         let authToken = null;
-        const baseUrl = 'http://127.0.0.1:5000';
-        
+
+        // Set default datetime values
+        document.addEventListener('DOMContentLoaded', function() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(14, 0, 0, 0);
+            
+            const dayAfterTomorrow = new Date();
+            dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+            dayAfterTomorrow.setHours(15, 30, 0, 0);
+            
+            document.getElementById('appointmentDate').value = tomorrow.toISOString().slice(0, 16);
+            document.getElementById('updateAppointmentDate').value = dayAfterTomorrow.toISOString().slice(0, 16);
+        });
+
+        function scrollToSection(sectionId) {
+            document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showResponse(elementId, response, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response-area ${isError ? 'error' : 'success'}`;
+            element.textContent = JSON.stringify(response, null, 2);
+        }
+
+        function hideResponse(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { status: response.status, data };
+            } catch (error) {
+                return { status: 0, data: { error: error.message } };
+            }
+        }
+
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const resultDiv = document.getElementById('loginResult');
             
-            if (!email || !password) {
-                resultDiv.className = 'result error';
-                resultDiv.textContent = 'Please enter both email and password';
-                return;
-            }
+            const response = await makeRequest(`${BASE_URL}/api/patient/login`, {
+                method: 'POST',
+                body: JSON.stringify({ email, password })
+            });
             
-            try {
-                const response = await fetch(`${baseUrl}/api/patient/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email, password })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    authToken = data.token;
-                    resultDiv.className = 'result success';
-                    resultDiv.textContent = `Login successful!\nToken: ${data.token.substring(0, 50)}...\nUser: ${data.user.name}`;
-                    
-                    // Enable other buttons
-                    document.getElementById('profileBtn').disabled = false;
-                    document.getElementById('appointmentsBtn').disabled = false;
-                    document.getElementById('casesBtn').disabled = false;
-                } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.textContent = `Login failed: ${data.message || 'Unknown error'}`;
-                }
-            } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.textContent = `Error: ${error.message}`;
+            if (response.status === 200) {
+                authToken = response.data.token;
+                document.getElementById('tokenInfo').style.display = 'block';
+                document.getElementById('tokenDisplay').textContent = authToken;
+                showResponse('loginResponse', response.data);
+            } else {
+                showResponse('loginResponse', response.data, true);
             }
         }
-        
+
         async function getProfile() {
             if (!authToken) {
-                document.getElementById('profileResult').className = 'result error';
-                document.getElementById('profileResult').textContent = 'Please login first';
+                alert('Please login first');
                 return;
             }
             
-            try {
-                const response = await fetch(`${baseUrl}/api/patient/profile`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                const resultDiv = document.getElementById('profileResult');
-                
-                if (response.ok) {
-                    resultDiv.className = 'result success';
-                    resultDiv.textContent = JSON.stringify(data, null, 2);
-                } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.textContent = `Failed: ${data.message || 'Unknown error'}`;
-                }
-            } catch (error) {
-                document.getElementById('profileResult').className = 'result error';
-                document.getElementById('profileResult').textContent = `Error: ${error.message}`;
-            }
+            const response = await makeRequest(`${BASE_URL}/api/patient/profile`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('profileResponse', response.data, response.status !== 200);
         }
-        
+
+        async function getDoctors() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const response = await makeRequest(`${BASE_URL}/api/patient/doctors`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('doctorsResponse', response.data, response.status !== 200);
+        }
+
         async function getAppointments() {
             if (!authToken) {
-                document.getElementById('appointmentsResult').className = 'result error';
-                document.getElementById('appointmentsResult').textContent = 'Please login first';
+                alert('Please login first');
                 return;
             }
             
-            try {
-                const response = await fetch(`${baseUrl}/api/patient/appointments`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                const resultDiv = document.getElementById('appointmentsResult');
-                
-                if (response.ok) {
-                    resultDiv.className = 'result success';
-                    resultDiv.textContent = JSON.stringify(data, null, 2);
-                } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.textContent = `Failed: ${data.message || 'Unknown error'}`;
-                }
-            } catch (error) {
-                document.getElementById('appointmentsResult').className = 'result error';
-                document.getElementById('appointmentsResult').textContent = `Error: ${error.message}`;
-            }
+            const status = document.getElementById('statusFilter').value;
+            const url = status ? 
+                `${BASE_URL}/api/patient/appointments?status=${status}` : 
+                `${BASE_URL}/api/patient/appointments`;
+            
+            const response = await makeRequest(url, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('appointmentsResponse', response.data, response.status !== 200);
         }
-        
+
+        async function createAppointment() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const data = {
+                doctor_id: parseInt(document.getElementById('doctorId').value),
+                datetime: document.getElementById('appointmentDate').value.replace('T', ' '),
+                notes: document.getElementById('appointmentNotes').value,
+                patient_type: document.getElementById('patientType').value,
+                priority: document.getElementById('priority').value
+            };
+            
+            const response = await makeRequest(`${BASE_URL}/api/patient/appointments`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(data)
+            });
+            
+            showResponse('createAppointmentResponse', response.data, response.status !== 201);
+        }
+
+        async function getAppointmentDetails() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const appointmentId = document.getElementById('appointmentId').value;
+            const response = await makeRequest(`${BASE_URL}/api/patient/appointments/${appointmentId}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('appointmentDetailsResponse', response.data, response.status !== 200);
+        }
+
+        async function updateAppointment() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const appointmentId = document.getElementById('updateAppointmentId').value;
+            const data = {
+                datetime: document.getElementById('updateAppointmentDate').value.replace('T', ' '),
+                notes: document.getElementById('updateNotes').value,
+                priority: document.getElementById('updatePriority').value
+            };
+            
+            const response = await makeRequest(`${BASE_URL}/api/patient/appointments/${appointmentId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(data)
+            });
+            
+            showResponse('updateAppointmentResponse', response.data, response.status !== 200);
+        }
+
+        async function cancelAppointment() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const appointmentId = document.getElementById('cancelAppointmentId').value;
+            const response = await makeRequest(`${BASE_URL}/api/patient/appointments/${appointmentId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('cancelAppointmentResponse', response.data, response.status !== 200);
+        }
+
+        async function getUpcomingAppointments() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const days = document.getElementById('upcomingDays').value;
+            const response = await makeRequest(`${BASE_URL}/api/patient/appointments/upcoming?days=${days}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('upcomingAppointmentsResponse', response.data, response.status !== 200);
+        }
+
+        async function getAppointmentHistory() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const limit = document.getElementById('historyLimit').value;
+            const status = document.getElementById('historyStatus').value;
+            const url = status ? 
+                `${BASE_URL}/api/patient/appointments/history?limit=${limit}&status=${status}` : 
+                `${BASE_URL}/api/patient/appointments/history?limit=${limit}`;
+            
+            const response = await makeRequest(url, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('appointmentHistoryResponse', response.data, response.status !== 200);
+        }
+
         async function getCases() {
             if (!authToken) {
-                document.getElementById('casesResult').className = 'result error';
-                document.getElementById('casesResult').textContent = 'Please login first';
+                alert('Please login first');
                 return;
             }
             
-            try {
-                const response = await fetch(`${baseUrl}/api/patient/cases`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                const data = await response.json();
-                const resultDiv = document.getElementById('casesResult');
-                
-                if (response.ok) {
-                    resultDiv.className = 'result success';
-                    resultDiv.textContent = JSON.stringify(data, null, 2);
-                } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.textContent = `Failed: ${data.message || 'Unknown error'}`;
-                }
-            } catch (error) {
-                document.getElementById('casesResult').className = 'result error';
-                document.getElementById('casesResult').textContent = `Error: ${error.message}`;
+            const response = await makeRequest(`${BASE_URL}/api/patient/cases`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('casesResponse', response.data, response.status !== 200);
+        }
+
+        async function getQuestions() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
             }
+            
+            const response = await makeRequest(`${BASE_URL}/api/patient/questions`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            
+            showResponse('questionsResponse', response.data, response.status !== 200);
+        }
+
+        async function askQuestion() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const data = {
+                doctor_id: parseInt(document.getElementById('questionDoctorId').value),
+                question: document.getElementById('questionText').value,
+                is_private: document.getElementById('isPrivate').value === 'true'
+            };
+            
+            const response = await makeRequest(`${BASE_URL}/api/patient/questions`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(data)
+            });
+            
+            showResponse('askQuestionResponse', response.data, response.status !== 201);
+        }
+
+        async function submitFeedback() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const data = {
+                doctor_id: parseInt(document.getElementById('feedbackDoctorId').value),
+                rating: parseInt(document.getElementById('rating').value),
+                comment: document.getElementById('feedbackComment').value,
+                is_anonymous: document.getElementById('isAnonymous').value === 'true'
+            };
+            
+            const response = await makeRequest(`${BASE_URL}/api/patient/feedback`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(data)
+            });
+            
+            showResponse('feedbackResponse', response.data, response.status !== 201);
         }
     </script>
 </body>

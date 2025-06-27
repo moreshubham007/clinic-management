@@ -41,12 +41,14 @@ docs/
 - Error handling examples
 - Token management
 - Response parsing
+- **Comprehensive appointment management testing**
 
 ### HTML Test Page (`test_api.html`)
 - Interactive browser-based testing
 - User-friendly interface
 - Real-time response display
 - No installation required
+- **Full appointment CRUD operations**
 
 ### Postman Collection (`Patient_API_Postman_Collection.json`)
 - Pre-configured requests
@@ -60,7 +62,14 @@ docs/
 |--------|----------|-------------|
 | POST | `/api/patient/login` | Patient authentication |
 | GET | `/api/patient/profile` | Get patient profile |
-| GET | `/api/patient/appointments` | Get appointments |
+| GET | `/api/patient/appointments` | Get all appointments |
+| POST | `/api/patient/appointments` | Create new appointment |
+| GET | `/api/patient/appointments/{id}` | Get appointment details |
+| PUT | `/api/patient/appointments/{id}` | Update appointment |
+| DELETE | `/api/patient/appointments/{id}` | Cancel appointment |
+| GET | `/api/patient/appointments/upcoming` | Get upcoming appointments |
+| GET | `/api/patient/appointments/history` | Get appointment history |
+| GET | `/api/patient/doctors` | Get available doctors |
 | GET | `/api/patient/cases` | Get medical cases |
 | GET | `/api/patient/questions` | Get questions |
 | POST | `/api/patient/questions` | Ask new question |
@@ -90,6 +99,14 @@ docs/
 3. Include token in Authorization header
 4. Access protected endpoints
 
+### Appointment Management Workflow
+1. **Get available doctors** using `/api/patient/doctors`
+2. **Create appointment** with doctor ID and datetime
+3. **View appointments** using various endpoints
+4. **Update appointment** if needed
+5. **Cancel appointment** if required
+6. **Track history** and upcoming appointments
+
 ### Error Handling
 - Check HTTP status codes
 - Review error message in response body
@@ -102,12 +119,14 @@ docs/
 1. **401 Unauthorized** - Check token validity and format
 2. **404 Not Found** - Verify endpoint URL and server status
 3. **400 Bad Request** - Check request body format and required fields
+4. **409 Conflict** - Time slot already booked, choose different time
 
 ### Debug Steps
 1. Test server connectivity
 2. Verify login credentials
 3. Check token expiration
 4. Review request headers and body
+5. Validate appointment datetime format
 
 ## 📞 Support
 
@@ -124,6 +143,25 @@ To improve the documentation:
 2. Test all examples and code snippets
 3. Ensure consistency across all documents
 4. Update this index file if adding new documentation
+
+## 🆕 Recent Updates
+
+### Appointment Management Features
+The Patient API now includes comprehensive appointment management:
+
+- **Create Appointments**: Book appointments with available doctors
+- **View Appointments**: Get all appointments with filtering options
+- **Update Appointments**: Modify scheduled appointments
+- **Cancel Appointments**: Cancel scheduled appointments
+- **Appointment History**: View past appointments
+- **Upcoming Appointments**: Get future scheduled appointments
+- **Doctor Availability**: Browse available doctors and specializations
+- **Time Slot Validation**: Automatic conflict detection and validation
+
+### Enhanced Testing Tools
+- Updated Python test script with appointment management examples
+- Enhanced HTML test page with full CRUD operations
+- Comprehensive Postman collection with all endpoints
 
 ---
 

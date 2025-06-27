@@ -14,7 +14,9 @@ A comprehensive hospital management system with role-based access for administra
 - RESTful API for patient mobile applications
 - JWT authentication
 - Profile management
-- Appointment tracking
+- **Complete appointment management (CRUD operations)**
+- **Doctor availability and scheduling**
+- **Appointment history and upcoming appointments**
 - Medical case history
 - Q&A system
 - Feedback submission
@@ -71,7 +73,7 @@ The application will be available at `http://127.0.0.1:5000`
 ## Patient API Documentation
 
 ### Overview
-The Patient API provides secure access to patient functionality through RESTful endpoints with JWT authentication.
+The Patient API provides secure access to patient functionality through RESTful endpoints with JWT authentication. It includes comprehensive appointment management capabilities.
 
 ### Quick Start
 
@@ -82,9 +84,21 @@ The Patient API provides secure access to patient functionality through RESTful 
      -d '{"email": "patient@example.com", "password": "password123"}'
    ```
 
-2. **Use the token for protected endpoints:**
+2. **Create an appointment:**
    ```bash
-   curl -X GET http://127.0.0.1:5000/api/patient/profile \
+   curl -X POST http://127.0.0.1:5000/api/patient/appointments \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "doctor_id": 1,
+       "datetime": "2025-01-20 14:00",
+       "notes": "Follow-up consultation"
+     }'
+   ```
+
+3. **Get upcoming appointments:**
+   ```bash
+   curl -X GET http://127.0.0.1:5000/api/patient/appointments/upcoming \
      -H "Authorization: Bearer YOUR_TOKEN"
    ```
 
@@ -94,11 +108,31 @@ The Patient API provides secure access to patient functionality through RESTful 
 |--------|----------|-------------|
 | POST | `/api/patient/login` | Patient authentication |
 | GET | `/api/patient/profile` | Get patient profile |
-| GET | `/api/patient/appointments` | Get appointments |
+| GET | `/api/patient/appointments` | Get all appointments |
+| POST | `/api/patient/appointments` | Create new appointment |
+| GET | `/api/patient/appointments/{id}` | Get appointment details |
+| PUT | `/api/patient/appointments/{id}` | Update appointment |
+| DELETE | `/api/patient/appointments/{id}` | Cancel appointment |
+| GET | `/api/patient/appointments/upcoming` | Get upcoming appointments |
+| GET | `/api/patient/appointments/history` | Get appointment history |
+| GET | `/api/patient/doctors` | Get available doctors |
 | GET | `/api/patient/cases` | Get medical cases |
 | GET | `/api/patient/questions` | Get questions |
 | POST | `/api/patient/questions` | Ask new question |
 | POST | `/api/patient/feedback` | Submit feedback |
+
+### Appointment Management Features
+
+The Patient API provides comprehensive appointment management:
+
+- **Create Appointments**: Book appointments with available doctors
+- **View Appointments**: Get all appointments with filtering options
+- **Update Appointments**: Modify scheduled appointments
+- **Cancel Appointments**: Cancel scheduled appointments
+- **Appointment History**: View past appointments
+- **Upcoming Appointments**: Get future scheduled appointments
+- **Doctor Availability**: Browse available doctors and specializations
+- **Time Slot Validation**: Automatic conflict detection and validation
 
 ### Testing Tools
 
@@ -185,7 +219,7 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 ### Core Entities
 - **User**: Base user model with role-based access
 - **Doctor**: Doctor-specific information and relationships
-- **Appointment**: Patient-doctor appointments
+- **Appointment**: Patient-doctor appointments with full CRUD support
 - **Case**: Medical cases and treatment history
 - **Question**: Patient-doctor Q&A system
 - **Feedback**: Patient feedback for doctors
@@ -229,12 +263,17 @@ flask create-admin admin@example.com "Admin Name"
    - Check that the token is valid and not expired
    - Verify the Authorization header format: `Bearer TOKEN`
 
-2. **Database Connection Issues**
+2. **409 Conflict Error (Time Slot Booked)**
+   - Choose a different time slot for the appointment
+   - Check doctor availability using the `/api/patient/doctors` endpoint
+   - Verify the datetime format is correct (YYYY-MM-DD HH:MM)
+
+3. **Database Connection Issues**
    - Check your DATABASE_URL in .env
    - Ensure the database server is running
    - Run `flask db upgrade` to create tables
 
-3. **Missing Dependencies**
+4. **Missing Dependencies**
    - Run `pip install -r requirements.txt`
    - Check Python version (3.8+ required)
 
@@ -252,7 +291,15 @@ flask create-admin admin@example.com "Admin Name"
      -d '{"email": "test@example.com", "password": "test123"}'
    ```
 
-3. **Check logs:**
+3. **Test appointment creation:**
+   ```bash
+   curl -X POST http://127.0.0.1:5000/api/patient/appointments \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"doctor_id": 1, "datetime": "2025-01-20 14:00"}'
+   ```
+
+4. **Check logs:**
    - Application logs are in `logs/app.log`
    - Database queries are logged to console in debug mode
 
@@ -283,5 +330,8 @@ For support and questions:
 - Initial release
 - Multi-role system
 - Patient API with JWT authentication
+- **Complete appointment management (CRUD operations)**
+- **Doctor availability and scheduling**
+- **Appointment history and upcoming appointments**
 - Modern responsive UI
 - Complete documentation and testing tools 
