@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>Patient API Test</h1>
+    
+    <div class="section">
+        <h2>1. Login</h2>
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="patient@example.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" placeholder="password123">
+        </div>
+        <button onclick="login()">Login</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Get Profile</h2>
+        <button onclick="getProfile()" id="profileBtn" disabled>Get Profile</button>
+        <div id="profileResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Get Appointments</h2>
+        <button onclick="getAppointments()" id="appointmentsBtn" disabled>Get Appointments</button>
+        <div id="appointmentsResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Get Cases</h2>
+        <button onclick="getCases()" id="casesBtn" disabled>Get Cases</button>
+        <div id="casesResult" class="result"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const baseUrl = 'http://127.0.0.1:5000';
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            if (!email || !password) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Please enter both email and password';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/patient/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `Login successful!\nToken: ${data.token.substring(0, 50)}...\nUser: ${data.user.name}`;
+                    
+                    // Enable other buttons
+                    document.getElementById('profileBtn').disabled = false;
+                    document.getElementById('appointmentsBtn').disabled = false;
+                    document.getElementById('casesBtn').disabled = false;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Login failed: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function getProfile() {
+            if (!authToken) {
+                document.getElementById('profileResult').className = 'result error';
+                document.getElementById('profileResult').textContent = 'Please login first';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/patient/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                const resultDiv = document.getElementById('profileResult');
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Failed: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                document.getElementById('profileResult').className = 'result error';
+                document.getElementById('profileResult').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function getAppointments() {
+            if (!authToken) {
+                document.getElementById('appointmentsResult').className = 'result error';
+                document.getElementById('appointmentsResult').textContent = 'Please login first';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/patient/appointments`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                const resultDiv = document.getElementById('appointmentsResult');
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Failed: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                document.getElementById('appointmentsResult').className = 'result error';
+                document.getElementById('appointmentsResult').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function getCases() {
+            if (!authToken) {
+                document.getElementById('casesResult').className = 'result error';
+                document.getElementById('casesResult').textContent = 'Please login first';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/patient/cases`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                const resultDiv = document.getElementById('casesResult');
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Failed: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                document.getElementById('casesResult').className = 'result error';
+                document.getElementById('casesResult').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,2 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">Welcome, {{ current_user.name }}!</h1>
+        </div>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Patient Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Patient ID:</strong> {{ current_user.patient_number or 'N/A' }}</p>
+                            <p><strong>Email:</strong> {{ current_user.email }}</p>
+                            <p><strong>Phone:</strong> {{ current_user.mobile_number or 'N/A' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Date of Birth:</strong> {{ current_user.date_of_birth.strftime('%B %d, %Y') if current_user.date_of_birth else 'N/A' }}</p>
+                            <p><strong>Gender:</strong> {{ current_user.gender or 'N/A' }}</p>
+                            <p><strong>Address:</strong> {{ current_user.address or 'N/A' }}, {{ current_user.city or 'N/A' }}, {{ current_user.state or 'N/A' }} - {{ current_user.pin_code or 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Upcoming Appointments -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Upcoming Appointments</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in upcoming_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.datetime.strftime('%B %d, %Y at %I:%M %p') }}</td>
+                                        <td>{{ appointment.doctor.user.name if appointment.doctor else 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge {% if appointment.status == 'confirmed' %}bg-success{% elif appointment.status == 'pending' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                                {{ appointment.status.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('appointments.update_appointment', appointment_id=appointment.id) }}" class="btn btn-sm btn-primary">View</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No upcoming appointments.</p>
+                        <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">Book New Appointment</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Cases -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Medical Cases</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_cases %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Doctor</th>
+                                        <th>Diagnosis</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for case in recent_cases %}
+                                    <tr>
+                                        <td>{{ case.created_at.strftime('%B %d, %Y') }}</td>
+                                        <td>{{ case.doctor.user.name if case.doctor else 'N/A' }}</td>
+                                        <td>{{ case.diagnosis[:50] + '...' if case.diagnosis and case.diagnosis|length > 50 else case.diagnosis or 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge {% if case.status == 'active' %}bg-primary{% elif case.status == 'resolved' %}bg-success{% else %}bg-secondary{% endif %}">
+                                                {{ case.status.title() }}
+                                            </span>
+                                        </td>
+                                        <td>
 <a href="{{ url_for('cases.view_case', case_id=case.id) }}" class="btn btn-sm btn-primary">View Details</a>
-<form method="POST" action="{{ url_for('cases.submit_feedback', case_id=case.id) }}" class="feedback-form"> 
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No medical cases found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Questions -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Questions & Answers</h5>
+                    <a href="{{ url_for('patient.ask_question') }}" class="btn btn-primary btn-sm">Ask New Question</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_questions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date Asked</th>
+                                        <th>Question</th>
+                                        <th>Doctor</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for question in recent_questions %}
+                                    <tr>
+                                        <td>{{ question.created_at.strftime('%B %d, %Y') }}</td>
+                                        <td>{{ question.question[:80] + '...' if question.question|length > 80 else question.question }}</td>
+                                        <td>{{ question.doctor.user.name if question.doctor else 'N/A' }}</td>
+                                        <td>
+                                            {% if question.answer %}
+                                                <span class="badge bg-success">Answered</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('patient.my_questions') }}" class="btn btn-sm btn-primary">View</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No questions found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-calendar-plus"></i> Book Appointment
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('patient.ask_question') }}" class="btn btn-info w-100">
+                                <i class="fas fa-question-circle"></i> Ask Question
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-success w-100">
+                                <i class="fas fa-list"></i> View All Appointments
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('patient.view_my_cases') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-folder-medical"></i> My Medical Cases
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
