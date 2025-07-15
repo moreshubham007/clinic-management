@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
-from app import db
+from extensions import db
 from models import Case, Appointment, Doctor, User, CaseAttachment
 from datetime import datetime
 from functools import wraps
@@ -58,7 +58,7 @@ def list_cases():
     
     return render_template('cases/list.html', cases=cases)
 
-@cases_bp.route('/api/search_patients')
+@cases_bp.route('/search_patients')
 @login_required
 @doctor_required
 def search_patients():

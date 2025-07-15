@@ -3,11 +3,13 @@ import json
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from app import db
+from extensions import db
 from models import User, Doctor
 from werkzeug.security import generate_password_hash
 from functools import wraps
-from app import ROLE_ADMIN, ROLE_DOCTOR
+# Role constants defined locally
+ROLE_ADMIN = 'admin'
+ROLE_DOCTOR = 'doctor'
 import re
 
 admin_bp = Blueprint('admin', __name__)

@@ -165,7 +165,7 @@ def get_profile(current_user):
         'pin_code': current_user.pin_code
     }), 200
 
-@patient_api_bp.route('/api/patient/appointments', methods=['GET', 'POST'])
+@patient_api_bp.route('/patient/appointments', methods=['GET', 'POST'])
 @token_required
 def appointments(current_user):
     """
@@ -218,11 +218,15 @@ def appointments(current_user):
           schema:
             type: object
             required:
-              - doctor_id
+              - doctor
               - datetime
             properties:
-              doctor_id:
-                type: integer
+              doctor:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: User ID of the doctor
               datetime:
                 type: string
                 format: date-time
@@ -239,6 +243,8 @@ def appointments(current_user):
           description: Appointment created successfully
         400:
           description: Invalid request data
+        404:
+          description: User not found or not a doctor
         409:
           description: Time slot already booked
     """
@@ -272,15 +278,28 @@ def appointments(current_user):
             return jsonify({'message': 'No data provided'}), 400
         
         # Validate required fields
-        required_fields = ['doctor_id', 'datetime']
+        required_fields = ['doctor', 'datetime']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'message': f'Missing required field: {field}'}), 400
         
-        # Validate doctor exists
-        doctor = Doctor.query.get(data['doctor_id'])
+        # Validate doctor exists and has doctor role
+        doctor_id = data['doctor'].get('id')
+        if not doctor_id:
+            return jsonify({'message': 'Doctor ID is required'}), 400
+            
+        # First check if user exists and has doctor role
+        user = User.query.get(doctor_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+            
+        if user.role != 'doctor':
+            return jsonify({'message': 'User is not a doctor'}), 400
+            
+        # Then get the doctor record
+        doctor = Doctor.query.filter_by(user_id=doctor_id).first()
         if not doctor:
-            return jsonify({'message': 'Doctor not found'}), 404
+            return jsonify({'message': 'Doctor record not found'}), 404
         
         # Parse datetime
         try:
@@ -329,7 +348,7 @@ def appointments(current_user):
             }
         }), 201
 
-@patient_api_bp.route('/api/patient/appointments/<int:appointment_id>', methods=['GET', 'PUT', 'DELETE'])
+@patient_api_bp.route('/patient/appointments/<int:appointment_id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required
 def appointment_detail(current_user, appointment_id):
     """
@@ -490,7 +509,7 @@ def appointment_detail(current_user, appointment_id):
         
         return jsonify({'message': 'Appointment cancelled successfully'})
 
-@patient_api_bp.route('/api/patient/appointments/upcoming', methods=['GET'])
+@patient_api_bp.route('/patient/appointments/upcoming', methods=['GET'])
 @token_required
 def upcoming_appointments(current_user):
     """
@@ -552,7 +571,7 @@ def upcoming_appointments(current_user):
         'days_until': (apt.datetime - datetime.now()).days
     } for apt in appointments])
 
-@patient_api_bp.route('/api/patient/appointments/history', methods=['GET'])
+@patient_api_bp.route('/patient/appointments/history', methods=['GET'])
 @token_required
 def appointment_history(current_user):
     """
@@ -622,7 +641,7 @@ def appointment_history(current_user):
         'days_ago': (datetime.now() - apt.datetime).days
     } for apt in appointments])
 
-@patient_api_bp.route('/api/patient/doctors', methods=['GET'])
+@patient_api_bp.route('/patient/doctors', methods=['GET'])
 @token_required
 def get_doctors(current_user):
     """
@@ -658,7 +677,7 @@ def get_doctors(current_user):
         'email': doctor.user.email
     } for doctor in doctors])
 
-@patient_api_bp.route('/api/patient/cases', methods=['GET'])
+@patient_api_bp.route('/patient/cases', methods=['GET'])
 @token_required
 def get_cases(current_user):
     """
@@ -711,7 +730,7 @@ def get_cases(current_user):
         'status': case.status
     } for case in cases])
 
-@patient_api_bp.route('/api/patient/questions', methods=['GET', 'POST'])
+@patient_api_bp.route('/patient/questions', methods=['GET', 'POST'])
 @token_required
 def questions(current_user):
     """
@@ -754,11 +773,15 @@ def questions(current_user):
           schema:
             type: object
             required:
-              - doctor_id
+              - doctor
               - question
             properties:
-              doctor_id:
-                type: integer
+              doctor:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: User ID of the doctor
               question:
                 type: string
               is_private:
@@ -785,10 +808,26 @@ def questions(current_user):
     
     else:  # POST
         data = request.get_json()
-        if not data or not data.get('doctor_id') or not data.get('question'):
+        if not data or not data.get('doctor') or not data.get('question'):
             return jsonify({'message': 'Missing required fields'}), 400
         
-        doctor = Doctor.query.get_or_404(data['doctor_id'])
+        # Validate doctor exists and has doctor role
+        doctor_id = data['doctor'].get('id')
+        if not doctor_id:
+            return jsonify({'message': 'Doctor ID is required'}), 400
+            
+        # First check if user exists and has doctor role
+        user = User.query.get(doctor_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+            
+        if user.role != 'doctor':
+            return jsonify({'message': 'User is not a doctor'}), 400
+            
+        # Then get the doctor record
+        doctor = Doctor.query.filter_by(user_id=doctor_id).first()
+        if not doctor:
+            return jsonify({'message': 'Doctor record not found'}), 404
         
         question = Question(
             patient_id=current_user.id,
@@ -805,7 +844,7 @@ def questions(current_user):
             'id': question.id
         }), 201
 
-@patient_api_bp.route('/api/patient/feedback', methods=['POST'])
+@patient_api_bp.route('/patient/feedback', methods=['POST'])
 @token_required
 def submit_feedback(current_user):
     """
@@ -821,11 +860,15 @@ def submit_feedback(current_user):
         schema:
           type: object
           required:
-            - doctor_id
+            - doctor
             - rating
           properties:
-            doctor_id:
-              type: integer
+            doctor:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  description: User ID of the doctor
             rating:
               type: integer
               minimum: 1
@@ -840,13 +883,29 @@ def submit_feedback(current_user):
     """
     data = request.get_json()
     
-    if not data or not data.get('doctor_id') or not data.get('rating'):
+    if not data or not data.get('doctor') or not data.get('rating'):
         return jsonify({'message': 'Missing required fields'}), 400
     
     if not 1 <= data['rating'] <= 5:
         return jsonify({'message': 'Rating must be between 1 and 5'}), 400
     
-    doctor = Doctor.query.get_or_404(data['doctor_id'])
+    # Validate doctor exists and has doctor role
+    doctor_id = data['doctor'].get('id')
+    if not doctor_id:
+        return jsonify({'message': 'Doctor ID is required'}), 400
+        
+    # First check if user exists and has doctor role
+    user = User.query.get(doctor_id)
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+        
+    if user.role != 'doctor':
+        return jsonify({'message': 'User is not a doctor'}), 400
+        
+    # Then get the doctor record
+    doctor = Doctor.query.filter_by(user_id=doctor_id).first()
+    if not doctor:
+        return jsonify({'message': 'Doctor record not found'}), 404
     
     feedback = Feedback(
         patient_id=current_user.id,

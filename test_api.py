@@ -15,8 +15,8 @@ BASE_URL = "http://127.0.0.1:5000"
 API_BASE = f"{BASE_URL}/api/patient"
 
 # Test credentials (update these with actual patient credentials)
-TEST_EMAIL = "patient@example.com"
-TEST_PASSWORD = "password123"
+TEST_EMAIL = "shubham@vellichormedia.com"
+TEST_PASSWORD = "shubham@vellichormedia.com"
 
 def print_response(response, title):
     """Print formatted API response"""
@@ -97,7 +97,9 @@ def test_create_appointment(token, doctor_id):
     appointment_time = tomorrow.replace(hour=14, minute=0, second=0, microsecond=0)
     
     data = {
-        "doctor_id": doctor_id,
+        "doctor": {
+            "id": doctor_id
+        },
         "datetime": appointment_time.strftime("%Y-%m-%d %H:%M"),
         "notes": "Test appointment created via API",
         "patient_type": "existing",
@@ -236,7 +238,9 @@ def test_ask_question(token, doctor_id):
     }
     
     data = {
-        "doctor_id": doctor_id,
+        "doctor": {
+            "id": doctor_id
+        },
         "question": "What are the side effects of the prescribed medication?",
         "is_private": False
     }
@@ -255,7 +259,9 @@ def test_submit_feedback(token, doctor_id):
     }
     
     data = {
-        "doctor_id": doctor_id,
+        "doctor": {
+            "id": doctor_id
+        },
         "rating": 5,
         "comment": "Excellent service and very professional doctor.",
         "is_anonymous": False

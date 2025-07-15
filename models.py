@@ -3,13 +3,8 @@ from flask_login import UserMixin
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Import db directly if it's defined elsewhere
-try:
-    from app import db
-except ImportError:
-    # If this fails, initialize db here (for testing purposes)
-    from flask_sqlalchemy import SQLAlchemy
-    db = SQLAlchemy()
+# Import db from extensions
+from extensions import db
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

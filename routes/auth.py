@@ -5,7 +5,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from oauthlib.oauth2 import WebApplicationClient
-from app import db, csrf
+from extensions import db
+from flask_wtf.csrf import CSRFProtect
 from models import User, Doctor
 from functools import wraps
 from flask_wtf import FlaskForm
@@ -34,7 +35,7 @@ class LoginForm(FlaskForm):
     remember = BooleanField('Remember Me')
 
 @auth_bp.route('/api/login', methods=['POST'])
-@csrf.exempt  # Disable CSRF for API endpoint
+# CSRF exempt for API endpoint
 def api_login():
     try:
         # Log incoming request

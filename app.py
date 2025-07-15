@@ -53,22 +53,12 @@ app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
+# Import extensions
+from extensions import db, login_manager, mail, migrate, csrf, init_extensions
+from flask_wtf.csrf import generate_csrf
+
 # Initialize extensions
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-# Initialize login manager
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'auth.login'
-login_manager.login_message_category = 'info'
-
-# Initialize mail
-mail = Mail(app)
-
-# Initialize CSRF protection
-from flask_wtf.csrf import CSRFProtect, generate_csrf
-csrf = CSRFProtect(app)
+init_extensions(app)
 
 # Exempt API routes from CSRF protection if needed
 csrf.exempt('admin.user_api')
@@ -117,7 +107,7 @@ app.register_blueprint(dashboard_bp)
 app.register_blueprint(patient_bp, url_prefix='/patient')
 app.register_blueprint(doctor_bp, url_prefix='/doctor')
 app.register_blueprint(appointments_bp, url_prefix='/appointments')
-app.register_blueprint(cases_bp)
+app.register_blueprint(cases_bp, url_prefix='/cases')
 app.register_blueprint(receptionist_bp, url_prefix='/receptionist')
 app.register_blueprint(patient_api_bp, url_prefix='/api')
 app.register_blueprint(swagger_ui_blueprint, url_prefix='/api/docs')
