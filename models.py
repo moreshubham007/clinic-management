@@ -155,4 +155,69 @@ class CaseTransfer(db.Model):
     case = db.relationship('Case', backref='transfers')
     from_doctor = db.relationship('Doctor', foreign_keys=[from_doctor_id], backref='transfers_sent')
     to_doctor = db.relationship('Doctor', foreign_keys=[to_doctor_id], backref='transfers_received')
-    patient = db.relationship('User', foreign_keys=[patient_id], backref='case_transfers') 
+    patient = db.relationship('User', foreign_keys=[patient_id], backref='case_transfers')
+
+class WaitingArea(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
+    
+    # Time tracking
+    check_in_time = db.Column(db.DateTime, default=lambda: datetime.now())
+    expected_appointment_time = db.Column(db.DateTime, nullable=False)
+    actual_start_time = db.Column(db.DateTime)  # When doctor actually starts
+    completion_time = db.Column(db.DateTime)  # When appointment is completed
+    
+    # Status tracking
+    status = db.Column(db.String(20), default='waiting')  # waiting, in_progress, completed, cancelled
+    priority = db.Column(db.String(10), default='normal')  # urgent, high, normal, low
+    
+    # Additional details
+    notes = db.Column(db.Text)  # Receptionist notes
+    doctor_notes = db.Column(db.Text)  # Doctor's notes
+    wait_time_minutes = db.Column(db.Integer)  # Calculated wait time
+    
+    # Created by
+    added_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Receptionist who added
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now())
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
+    
+    # Relationships
+    appointment = db.relationship('Appointment', backref='waiting_entries')
+    patient = db.relationship('User', foreign_keys=[patient_id], backref='waiting_entries')
+    doctor = db.relationship('Doctor', backref='waiting_entries')
+    added_by = db.relationship('User', foreign_keys=[added_by_id], backref='added_waiting_entries')
+    
+    def calculate_wait_time(self):
+        """Calculate wait time in minutes"""
+        if self.actual_start_time and self.check_in_time:
+            wait_time = self.actual_start_time - self.check_in_time
+            return int(wait_time.total_seconds() / 60)
+        elif self.status == 'waiting':
+            current_time = datetime.now()
+            wait_time = current_time - self.check_in_time
+            return int(wait_time.total_seconds() / 60)
+        return 0
+    
+    def is_long_wait(self):
+        """Check if patient has been waiting for more than 1 hour"""
+        wait_time = self.calculate_wait_time()
+        return wait_time > 60  # More than 1 hour
+    
+    def is_very_long_wait(self):
+        """Check if patient has been waiting for more than 2 hours"""
+        wait_time = self.calculate_wait_time()
+        return wait_time > 120  # More than 2 hours
+    
+    def get_wait_status(self):
+        """Get wait status for display"""
+        wait_time = self.calculate_wait_time()
+        if wait_time < 30:
+            return 'normal'
+        elif wait_time < 60:
+            return 'moderate'
+        elif wait_time < 120:
+            return 'long'
+        else:
+            return 'very_long' 

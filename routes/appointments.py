@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Doctor, Appointment, Case, CaseHistory
+from models import User, Doctor, Appointment, Case, CaseHistory, WaitingArea
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -173,6 +173,14 @@ def complete_appointment(appointment_id):
     
     appointment = Appointment.query.get_or_404(appointment_id)
     appointment.status = 'completed'
+    
+    # Update any waiting area entry for this appointment
+    waiting_entry = WaitingArea.query.filter_by(appointment_id=appointment_id).first()
+    if waiting_entry and waiting_entry.status in ['waiting', 'in_progress']:
+        waiting_entry.status = 'completed'
+        waiting_entry.completion_time = datetime.now()
+        waiting_entry.updated_at = datetime.now()
+    
     db.session.commit()
     
     return jsonify({'success': True})

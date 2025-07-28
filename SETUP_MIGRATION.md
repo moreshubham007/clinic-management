@@ -61,6 +61,8 @@ pip install flask-cors sqlalchemy
 ```bash
 # Execute the migration script
 python add_priority_migration.py
+# to add wating area model in database
+python run_waiting_area_migration.py
 ```
 
 **Expected Output:**

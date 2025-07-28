@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  flask_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clinic_flask_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      # Database Configuration
+      # Option 1: Connect to external MySQL database
+      - DATABASE_URL=mysql://hospital:hospital123@host.docker.internal:3306/clinic_db
+      # Option 2: Connect to local MySQL (uncomment if running MySQL locally)
+      # - DATABASE_URL=mysql://hospital:hospital123@localhost:3306/clinic_db
+      # Option 3: Use SQLite for development (uncomment if preferred)
+      # - DATABASE_URL=sqlite:///clinic.db
+      
+      # Mail Configuration (optional - update with your settings)
+      - MAIL_SERVER=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USE_TLS=True
+      - MAIL_USERNAME=your-email@gmail.com
+      - MAIL_PASSWORD=your-app-specific-password
+      
+      # Google OAuth (optional - update with your credentials)
+      - GOOGLE_CLIENT_ID=your-google-client-id
+      - GOOGLE_CLIENT_SECRET=your-google-client-secret
+    volumes:
+      # Mount the application code for development
+      - ./:/app
+      # Mount uploads directory
+      - ./data/uploads:/app/uploads
+      # Mount logs directory
+      - ./logs:/app/logs
+    working_dir: /app
+    # Health check to ensure the app is running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Add extra hosts to connect to host machine services
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+# Optional: Create named volumes for persistent data
+volumes:
+  uploads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/uploads
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/logs 

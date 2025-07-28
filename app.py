@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_mail import Mail
@@ -13,6 +13,9 @@ from flask_caching import Cache
 import logging
 from logging.handlers import RotatingFileHandler
 from docs.api_docs import swagger_ui_blueprint
+from flask_wtf.csrf import generate_csrf
+from models import User, Doctor, Appointment, WaitingArea
+from datetime import datetime, date, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -55,7 +58,6 @@ app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
 # Import extensions
 from extensions import db, login_manager, mail, migrate, csrf, init_extensions
-from flask_wtf.csrf import generate_csrf
 
 # Initialize extensions
 init_extensions(app)
@@ -99,6 +101,7 @@ from routes.doctor import doctor_bp
 from routes.appointments import appointments_bp
 from routes.cases import cases_bp
 from routes.receptionist import receptionist_bp
+from routes.waiting_area import waiting_area_bp
 from routes.api.patient import patient_api_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -109,6 +112,7 @@ app.register_blueprint(doctor_bp, url_prefix='/doctor')
 app.register_blueprint(appointments_bp, url_prefix='/appointments')
 app.register_blueprint(cases_bp, url_prefix='/cases')
 app.register_blueprint(receptionist_bp, url_prefix='/receptionist')
+app.register_blueprint(waiting_area_bp, url_prefix='/waiting-area')
 app.register_blueprint(patient_api_bp, url_prefix='/api')
 app.register_blueprint(swagger_ui_blueprint, url_prefix='/api/docs')
 
@@ -244,3 +248,31 @@ def test_db():
         return f"Database connection successful. User count: {user_count}"
     except Exception as e:
         return f"Database error: {str(e)}" 
+
+def cleanup_completed_appointments():
+    """Background task to clean up completed appointments from waiting area"""
+    try:
+        with app.app_context():
+            # Find waiting area entries where the associated appointment is completed
+            completed_waiting_entries = WaitingArea.query.join(Appointment).filter(
+                Appointment.status == 'completed',
+                WaitingArea.status.in_(['waiting', 'in_progress'])
+            ).all()
+            
+            removed_count = 0
+            for entry in completed_waiting_entries:
+                # Update the waiting area entry status to completed if not already
+                if entry.status != 'completed':
+                    entry.status = 'completed'
+                    entry.completion_time = datetime.now()
+                    entry.updated_at = datetime.now()
+                    removed_count += 1
+            
+            if removed_count > 0:
+                db.session.commit()
+                print(f"Background cleanup: Updated {removed_count} waiting area entries for completed appointments")
+            
+            return removed_count
+    except Exception as e:
+        print(f"Error in background cleanup: {e}")
+        return 0 

@@ -79,6 +79,81 @@
             </div>
         </div>
 
+        <!-- Waiting Area -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center" 
+                     style="background: linear-gradient(45deg, var(--purple-600), var(--purple-700));">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-clock text-white me-2"></i>
+                        Waiting Area
+                    </h5>
+                    <a href="{{ url_for('waiting_area.doctor_waiting_area') }}" 
+                       class="btn btn-sm btn-light">
+                        <i class="fas fa-arrow-right"></i> Manage
+                    </a>
+                </div>
+                <div class="card-body" style="background: linear-gradient(to bottom right, var(--purple-50), white);">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stat-card stat-waiting">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon mx-auto mb-2">
+                                        <i class="fas fa-hourglass-half"></i>
+                                    </div>
+                                    <h3 class="card-title mb-1" id="waitingCount">-</h3>
+                                    <p class="card-text mb-0">Waiting</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stat-card stat-progress">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon mx-auto mb-2">
+                                        <i class="fas fa-stethoscope"></i>
+                                    </div>
+                                    <h3 class="card-title mb-1" id="inProgressCount">-</h3>
+                                    <p class="card-text mb-0">In Progress</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stat-card stat-completed">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon mx-auto mb-2">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </div>
+                                    <h3 class="card-title mb-1" id="completedCount">-</h3>
+                                    <p class="card-text mb-0">Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stat-card stat-info">
+                                <div class="card-body text-center">
+                                    <div class="stat-icon mx-auto mb-2">
+                                        <i class="fas fa-stopwatch"></i>
+                                    </div>
+                                    <h3 class="card-title mb-1" id="avgWaitTime">-</h3>
+                                    <p class="card-text mb-0">Avg Wait (min)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('waiting_area.doctor_waiting_area') }}" 
+                           class="btn btn-purple btn-sm">
+                            <i class="fas fa-users me-1"></i> View Waiting Area
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
         <!-- Patient Type Summary -->
         <div class="col-md-6 mb-4">
             <div class="card">
@@ -385,6 +460,61 @@
     color: rgb(55, 65, 81);
 }
 
+/* Waiting Area Stat Cards */
+.stat-card {
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-waiting {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+}
+
+.stat-progress {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: white;
+}
+
+.stat-completed {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.stat-info {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.stat-card .card-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card .card-text {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
 :root {
     --purple-600-rgb: 124, 58, 237;
 }
@@ -454,5 +584,33 @@
             });
         }
     }
+
+    // Load waiting area statistics
+    function loadWaitingAreaStats() {
+        fetch('/waiting-area/api/waiting-stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('waitingCount').textContent = data.total_waiting;
+                document.getElementById('inProgressCount').textContent = data.total_in_progress;
+                document.getElementById('completedCount').textContent = data.total_completed;
+                document.getElementById('avgWaitTime').textContent = data.average_wait_time;
+            })
+            .catch(error => {
+                console.error('Error loading waiting area stats:', error);
+                // Set default values if API fails
+                document.getElementById('waitingCount').textContent = '0';
+                document.getElementById('inProgressCount').textContent = '0';
+                document.getElementById('completedCount').textContent = '0';
+                document.getElementById('avgWaitTime').textContent = '0';
+            });
+    }
+
+    // Load waiting area stats when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadWaitingAreaStats();
+        
+        // Refresh stats every 30 seconds
+        setInterval(loadWaitingAreaStats, 30000);
+    });
 </script>
 {% endblock %} 

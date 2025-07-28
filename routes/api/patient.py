@@ -225,7 +225,7 @@ def appointments(current_user):
                 type: object
                 properties:
                   id:
-                    type: integer
+                type: integer
                     description: User ID of the doctor
               datetime:
                 type: string
@@ -780,7 +780,7 @@ def questions(current_user):
                 type: object
                 properties:
                   id:
-                    type: integer
+                type: integer
                     description: User ID of the doctor
               question:
                 type: string
@@ -867,7 +867,7 @@ def submit_feedback(current_user):
               type: object
               properties:
                 id:
-                  type: integer
+              type: integer
                   description: User ID of the doctor
             rating:
               type: integer
