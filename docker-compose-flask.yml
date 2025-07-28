@@ -22,6 +22,7 @@ services:
       # - DATABASE_URL=sqlite:///clinic.db
       
       # Mail Configuration (optional - update with your settings)
+      - TZ=Asia/Kolkata
       - MAIL_SERVER=smtp.gmail.com
       - MAIL_PORT=587
       - MAIL_USE_TLS=True
