@@ -84,6 +84,24 @@
 
 ---
 
+## Version 2.4.1 — Jul 4, 2026
+
+### 🆕 New Page
+
+#### Public Scanner / Kiosk Landing (`/public_scanner`)
+- New public landing page designed for reception kiosks, QR code links, and shared tablets
+- No login required — fully public
+- Three large tap-friendly action cards:
+  - 📅 **Book Appointment** → `/book/`
+  - 💊 **Order Medicines** → `/medicines/order`
+  - 📦 **Track My Order** → `/medicines/track`
+- Vertically centered full-screen layout — works on mobile, tablet, and kiosk screens
+- Card lift + scale animation on hover / tap
+- Green leaf theme consistent with all public pages
+- Security note footer ("Your information is safe and secure")
+
+---
+
 ## Version 2.0.0 - Recent Updates
 
 ### 🚀 New Features
@@ -331,7 +349,11 @@ DELETE /appointments/{id} - Delete appointment (admin/receptionist only)
 
 ## Version History
 
-### v2.4.0 (Current) — Jul 4, 2026
+### v2.4.1 (Current) — Jul 4, 2026
+- Public Scanner/Kiosk landing page at /public_scanner
+- Three-option card layout for appointment booking, medicine orders, and order tracking
+
+### v2.4.0 — Jul 4, 2026
 - Medicine Order module (public) with courier tracking
 - Book Appointment module (public) for new & existing patients
 - Green Leaf theme with Material/iOS-style UI on all public pages

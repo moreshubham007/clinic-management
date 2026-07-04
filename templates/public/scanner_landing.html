@@ -1,0 +1,132 @@
+{% extends "public/public_base.html" %}
+{% block title %}Welcome — Clinic Services{% endblock %}
+{% block header_title %}Welcome{% endblock %}
+
+{% block content %}
+<div class="public-wrap" style="display:flex;flex-direction:column;min-height:calc(100vh - 80px);justify-content:center;padding-top:0;">
+
+    <!-- Brand -->
+    <div style="text-align:center;margin-bottom:2rem;">
+        <div style="width:80px;height:80px;background:linear-gradient(135deg,var(--g800),var(--g500));border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;box-shadow:0 8px 28px rgba(85,139,47,0.4);">
+            <i class="fas fa-hospital" style="color:white;font-size:2rem;"></i>
+        </div>
+        <h2 style="font-weight:800;color:var(--g800);margin:0;font-size:1.5rem;">Welcome</h2>
+        <p style="color:var(--on-surface-muted);margin:0.35rem 0 0;font-size:0.92rem;">How can we help you today?</p>
+    </div>
+
+    <!-- Two options -->
+    <div style="display:grid;gap:1rem;">
+
+        <!-- Book Appointment -->
+        <a href="{{ url_for('public_appt.book_landing') }}" class="text-decoration-none">
+            <div class="scanner-card" id="card-appt">
+                <div class="scanner-icon" style="background:linear-gradient(135deg,var(--g800),var(--g600));">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="scanner-text">
+                    <div class="scanner-title">Book Appointment</div>
+                    <div class="scanner-sub">New or existing patient — request a visit</div>
+                </div>
+                <div class="scanner-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+        </a>
+
+        <!-- Order Medicine -->
+        <a href="{{ url_for('medicines.order_medicine') }}" class="text-decoration-none">
+            <div class="scanner-card" id="card-med">
+                <div class="scanner-icon" style="background:linear-gradient(135deg,#1565c0,#42a5f5);">
+                    <i class="fas fa-pills"></i>
+                </div>
+                <div class="scanner-text">
+                    <div class="scanner-title">Order Medicines</div>
+                    <div class="scanner-sub">Home delivery or clinic pickup</div>
+                </div>
+                <div class="scanner-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+        </a>
+
+        <!-- Track Medicine Order -->
+        <a href="{{ url_for('medicines.track_medicine') }}" class="text-decoration-none">
+            <div class="scanner-card" id="card-track">
+                <div class="scanner-icon" style="background:linear-gradient(135deg,#e65100,#ff9800);">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div class="scanner-text">
+                    <div class="scanner-title">Track My Order</div>
+                    <div class="scanner-sub">Check live status of your medicine order</div>
+                </div>
+                <div class="scanner-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center;margin-top:2.5rem;">
+        <small style="color:var(--on-surface-muted);font-size:0.78rem;">
+            <i class="fas fa-lock me-1" style="color:var(--g400);"></i>
+            Your information is safe and secure
+        </small>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+.scanner-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: white;
+    border-radius: 20px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border: 1.5px solid rgba(0,0,0,0.05);
+    transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+    cursor: pointer;
+}
+.scanner-card:hover,
+.scanner-card:active {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+    border-color: var(--g300);
+}
+.scanner-card:active { transform: scale(0.98); }
+
+.scanner-icon {
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.scanner-text { flex: 1; }
+.scanner-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1a2e14;
+    margin-bottom: 0.2rem;
+}
+.scanner-sub {
+    font-size: 0.78rem;
+    color: #6b7c63;
+    line-height: 1.3;
+}
+.scanner-arrow {
+    color: #c5d9b8;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.scanner-card:hover .scanner-arrow { color: var(--g500); }
+</style>
+{% endblock %}

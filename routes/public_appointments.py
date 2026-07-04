@@ -24,6 +24,12 @@ def _next_request_number():
     return f"APTRQ-{str(n).zfill(5)}"
 
 
+# ── Public scanner / kiosk landing ───────────────────────────────────────────
+@public_appt_bp.route('/scanner')
+def scanner_landing():
+    return render_template('public/scanner_landing.html')
+
+
 # ── Public: landing page ──────────────────────────────────────────────────────
 @public_appt_bp.route('/')
 def book_landing():

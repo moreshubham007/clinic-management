@@ -245,6 +245,12 @@ if __name__ == '__main__':
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
+@app.route('/public_scanner')
+def public_scanner():
+    from flask import render_template
+    return render_template('public/scanner_landing.html')
+
+
 @app.route('/test-db')
 def test_db():
     try:
