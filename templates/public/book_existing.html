@@ -1,0 +1,143 @@
+{% extends "public/public_base.html" %}
+{% block title %}Existing Patient Appointment{% endblock %}
+{% block header_title %}Book Appointment{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+    <div class="pub-brand">
+        <span class="leaf">🌿</span>
+        <div>
+            <h1>Existing Patient</h1>
+            <p>Find your record and book quickly</p>
+        </div>
+    </div>
+
+    <a href="{{ url_for('public_appt.book_landing') }}" class="pub-back">
+        <i class="fas fa-arrow-left"></i> Back to options
+    </a>
+
+    {% if not patient %}
+    <!-- ── Step 1: Search ── -->
+    <div class="pub-card">
+        <div class="pub-card-header">
+            <h5><i class="fas fa-search me-2"></i>Find Your Record</h5>
+            <small>Enter your mobile number or Patient ID</small>
+        </div>
+        <div class="pub-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="search">
+
+                <div class="float-field">
+                    <input type="tel" name="mobile_number" value="{{ mobile }}"
+                           placeholder=" " inputmode="tel" autocomplete="tel">
+                    <label>Mobile Number</label>
+                    <i class="fas fa-phone field-icon"></i>
+                </div>
+
+                <div class="or-divider">OR</div>
+
+                <div class="float-field">
+                    <input type="text" name="patient_number" value="{{ patient_number }}"
+                           placeholder=" " style="text-transform:uppercase;" autocomplete="off">
+                    <label>Patient ID (e.g. INRI-00001)</label>
+                    <i class="fas fa-id-card field-icon"></i>
+                </div>
+
+                <div class="pub-submit-spacer"></div>
+                <div class="pub-submit-bar">
+                    <button type="submit" class="btn-green">
+                        <i class="fas fa-search"></i> Find My Record
+                    </button>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('public_appt.book_new_patient') }}"
+                           style="color:var(--g700);font-size:0.85rem;font-weight:600;">
+                            Not registered? Book as New Patient →
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ── Step 2: Patient found + form ── -->
+    <div class="patient-found-bar">
+        <div class="avatar">{{ patient.name[:1].upper() }}</div>
+        <div>
+            <div class="name">{{ patient.name }}</div>
+            <div class="meta">
+                {{ patient.patient_number or '' }}
+                {% if patient.mobile_number %} · {{ patient.mobile_number }}{% endif %}
+                {% if patient.gender %} · {{ patient.gender | title }}{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="pub-card">
+        <div class="pub-card-header">
+            <h5><i class="fas fa-calendar-plus me-2"></i>Appointment Preference</h5>
+        </div>
+        <div class="pub-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="submit">
+                <input type="hidden" name="patient_id" value="{{ patient.id }}">
+                <input type="hidden" name="submitted_mobile" value="{{ patient.mobile_number or mobile }}">
+
+                <!-- Date -->
+                <div class="float-field">
+                    <input type="date" name="preferred_date" id="prefDate" placeholder=" ">
+                    <label>Preferred Date (optional)</label>
+                </div>
+
+                <!-- Time preference -->
+                <div class="mb-3">
+                    <div class="form-label">Preferred Time <span class="text-muted fw-normal">(optional)</span></div>
+                    <div class="chip-group">
+                        {% set slots = [('09:00-11:00','🌅 9–11 AM'), ('11:00-13:00','☀️ 11–1 PM'), ('14:00-16:00','🕑 2–4 PM'), ('16:00-18:00','🌇 4–6 PM')] %}
+                        {% for val, label in slots %}
+                        <div class="chip-radio">
+                            <input type="radio" name="preferred_time" id="t_{{ loop.index }}" value="{{ val }}">
+                            <label for="t_{{ loop.index }}">{{ label }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="float-field">
+                    <textarea name="notes" placeholder=" " rows="3" style="min-height:90px;resize:none;"></textarea>
+                    <label>Reason / Concern (optional)</label>
+                </div>
+
+                <div class="pub-submit-spacer"></div>
+                <div class="pub-submit-bar">
+                    <div class="d-flex gap-2">
+                        <form method="POST" style="flex-shrink:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="search">
+                            <button type="submit" class="btn-ghost" style="height:100%;">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                        </form>
+                        <button type="submit" class="btn-green flex-fill">
+                            <i class="fas fa-calendar-check"></i> Submit Request
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const pd = document.getElementById('prefDate');
+if (pd) pd.min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

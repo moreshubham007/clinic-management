@@ -1,5 +1,89 @@
 # Clinic Management System - Changelog
 
+---
+
+## Version 2.4.0 — Jul 4, 2026
+
+### 🆕 New Modules
+
+#### 1. 💊 Order Medicines (Public)
+- **New public module** at `/medicines/order` — no login required
+- Patients can place medicine orders with:
+  - Mobile number + optional Patient ID
+  - Duration selection: 15 / 30 / 45 days (chip-style radio buttons)
+  - Delivery type: **Self Pickup** (with preferred pickup date) or **Courier** (with delivery address)
+  - Additional notes field
+- Auto-links order to patient record if mobile/Patient ID matches existing account
+- Order IDs generated in `MED-XXXXX` format
+- **Track Orders** at `/medicines/track` — search by mobile + Order ID or Patient ID
+- **Order Status page** at `/medicines/track/<order_number>` with live progress tracker (Placed → Processing → Ready → Delivered)
+- **Courier Tracking** for receptionist:
+  - Add courier company (Delhivery, BlueDart, DTDC, Ekart, etc.), AWB number, and tracking URL
+  - Patients see AWB + direct "Track on Courier Website" button on status page
+  - Auto-promotes status from `pending` → `processing` when AWB is saved
+- **Staff Management** at `/medicines/manage` (receptionist / admin only):
+  - Stats cards for each status
+  - Filter by status
+  - Update order status via inline dropdown
+  - Inline courier details form per courier order
+- New DB table: `medicine_order`
+
+#### 2. 👨‍⚕️ Book Appointment (Public)
+- **New public module** at `/book/` — no login required
+- Landing page with New Patient / Existing Patient selection
+- **New Patient** (`/book/new`):
+  - Name, mobile, email, gender
+  - Preferred date + time slot (chip selection)
+  - Reason / concern notes
+  - Request reference generated in `APTRQ-XXXXX` format
+- **Existing Patient** (`/book/existing`):
+  - Search by mobile number OR Patient ID
+  - Patient record auto-filled on find
+  - Book appointment with preferred date/time and notes
+- **Staff Request Management** at `/book/requests` (receptionist / admin only):
+  - Stats: Pending / Confirmed / Cancelled
+  - Confirm or Cancel requests with one click
+  - **Create Appointment** button pre-fills patient info, patient type, and notes into the appointment form
+- New DB table: `appointment_request`
+
+### ✨ Improvements
+
+#### Appointment Form Pre-fill
+- Clicking "Create Appointment" from an appointment request now pre-fills:
+  - Patient (auto-selected, no search needed)
+  - Patient Type (New / Existing from the request)
+  - Notes from the request
+- Patient selection is preserved across form validation failures (req_id + patient_id passed in redirect)
+
+#### Admin Sidebar
+- Admin role now has a proper sidebar with: Dashboard, Manage Users, Appointments, Medicine Orders, Appt Requests
+
+#### Flash Messages
+- Fixed raw HTML tags appearing in toast notifications (`| safe` filter applied)
+
+### 🎨 UI / UX — Green Leaf Theme
+- All public pages (`/medicines/*`, `/book/*`) redesigned with a **light green leaf theme**
+- Material Design / iOS / Windows-inspired components:
+  - **Floating label inputs** — label rises on focus/fill
+  - **Chip-style radio buttons** — full-tap-area pill selection
+  - **Card-style delivery selector** with animated icon circle
+  - **Gradient buttons** with ripple effect and hover lift
+  - **Fixed floating submit bar** on mobile screens (iOS bottom bar style)
+  - **Progress tracker** with connected dot steps
+  - **Patient found bar** with avatar initial
+  - Brand header with decorative gradient + overlay circle
+- Font stack: `-apple-system / Roboto / Segoe UI` for native feel
+- `cubic-bezier(0.4,0,0.2,1)` easing (Google Material standard)
+- Mobile-first: `inputmode` attributes for correct mobile keyboards
+
+### 🗄️ Database
+- Added `medicine_order` table (MariaDB/MySQL)
+- Added `appointment_request` table (MariaDB/MySQL)
+- Added `courier_name`, `courier_awb`, `courier_tracking_url` columns to `medicine_order`
+- Fixed `preferred_time` column size (`VARCHAR(10)` → `VARCHAR(30)`) to fit time range values like `11:00-13:00`
+
+---
+
 ## Version 2.0.0 - Recent Updates
 
 ### 🚀 New Features
@@ -247,7 +331,15 @@ DELETE /appointments/{id} - Delete appointment (admin/receptionist only)
 
 ## Version History
 
-### v2.1.0 (Current)
+### v2.4.0 (Current) — Jul 4, 2026
+- Medicine Order module (public) with courier tracking
+- Book Appointment module (public) for new & existing patients
+- Green Leaf theme with Material/iOS-style UI on all public pages
+- Appointment form pre-fill from request data
+- Admin sidebar added
+- Flash message HTML rendering fix
+
+### v2.1.0 (Previous)
 - Patient List pagination system (100 patients per page)
 - Performance optimization for large patient databases
 - Enhanced navigation with always-visible pagination controls

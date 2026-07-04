@@ -1,0 +1,137 @@
+{% extends "public/public_base.html" %}
+{% block title %}Order Medicines{% endblock %}
+{% block header_title %}Order Medicines{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+    <div class="pub-brand">
+        <span class="leaf">💊</span>
+        <div>
+            <h1>Order Medicines</h1>
+            <p>Home delivery or clinic pickup</p>
+        </div>
+    </div>
+
+    <div class="pub-tabs">
+        <a href="{{ url_for('medicines.order_medicine') }}" class="pub-tab active">
+            <i class="fas fa-plus-circle"></i>New Order
+        </a>
+        <a href="{{ url_for('medicines.track_medicine') }}" class="pub-tab">
+            <i class="fas fa-box"></i>Track Order
+        </a>
+    </div>
+
+    <div class="pub-card">
+        <div class="pub-card-header">
+            <h5><i class="fas fa-pills me-2"></i>Place Your Order</h5>
+            <small>Fill in your details below</small>
+        </div>
+        <div class="pub-card-body">
+            <form method="POST" id="orderForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-section-title"><span class="step-badge">1</span> Your Info</div>
+
+                <div class="float-field">
+                    <input type="tel" name="mobile_number" placeholder=" " required inputmode="tel" autocomplete="tel">
+                    <label>Mobile Number *</label>
+                    <i class="fas fa-phone field-icon"></i>
+                </div>
+
+                <div class="float-field">
+                    <input type="text" name="patient_number" placeholder=" " style="text-transform:uppercase;" autocomplete="off">
+                    <label>Patient ID (optional — e.g. INRI-00001)</label>
+                    <i class="fas fa-id-card field-icon"></i>
+                </div>
+
+                <div class="form-section-title"><span class="step-badge">2</span> Medicine Duration</div>
+
+                <div class="mb-3">
+                    <div class="chip-group">
+                        {% for days in [15, 30, 45] %}
+                        <div class="chip-radio" style="flex:1;">
+                            <input type="radio" name="duration_days" id="dur{{ days }}" value="{{ days }}"
+                                   {{ 'checked' if days == 30 }} required>
+                            <label for="dur{{ days }}" style="justify-content:center;width:100%;">
+                                <i class="fas fa-calendar-day"></i> {{ days }} Days
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-section-title"><span class="step-badge">3</span> Delivery Method</div>
+
+                <div class="card-radio-group mb-3">
+                    <div class="card-radio">
+                        <input type="radio" name="delivery_type" id="selfPickup" value="self_pickup"
+                               required onchange="toggleDelivery()">
+                        <label for="selfPickup">
+                            <div class="cr-icon"><i class="fas fa-store-alt"></i></div>
+                            Self Pickup
+                            <small style="font-weight:400;color:inherit;opacity:0.8;">Visit clinic</small>
+                        </label>
+                    </div>
+                    <div class="card-radio">
+                        <input type="radio" name="delivery_type" id="courier" value="courier"
+                               onchange="toggleDelivery()">
+                        <label for="courier">
+                            <div class="cr-icon"><i class="fas fa-truck"></i></div>
+                            Courier
+                            <small style="font-weight:400;color:inherit;opacity:0.8;">Home delivery</small>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Pickup date (shown when self_pickup selected) -->
+                <div id="pickupSection" style="display:none;" class="mb-3">
+                    <div class="float-field" style="margin-bottom:0;">
+                        <input type="date" name="pickup_date" id="pickup_date" placeholder=" ">
+                        <label>Preferred Pickup Date *</label>
+                    </div>
+                </div>
+
+                <!-- Delivery address (shown when courier selected) -->
+                <div id="courierSection" style="display:none;" class="mb-3">
+                    <div class="float-field" style="margin-bottom:0;">
+                        <textarea name="delivery_address" id="delivery_address" placeholder=" "
+                                  rows="3" style="min-height:90px;resize:none;"></textarea>
+                        <label>Delivery Address *</label>
+                    </div>
+                    <div class="form-text">Include area, city and PIN code</div>
+                </div>
+
+                <div class="form-section-title">Notes <span style="font-size:0.7rem;font-weight:400;text-transform:none;color:var(--on-surface-muted);">(optional)</span></div>
+
+                <div class="float-field">
+                    <textarea name="additional_notes" placeholder=" " rows="2"
+                              style="min-height:70px;resize:none;"></textarea>
+                    <label>Special instructions for your order</label>
+                </div>
+
+                <div class="pub-submit-spacer"></div>
+                <div class="pub-submit-bar">
+                    <button type="submit" class="btn-green">
+                        <i class="fas fa-pills"></i> Place Medicine Order
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDelivery() {
+    const selfPickup = document.getElementById('selfPickup').checked;
+    document.getElementById('pickupSection').style.display  = selfPickup ? 'block' : 'none';
+    document.getElementById('courierSection').style.display = selfPickup ? 'none'  : 'block';
+    document.getElementById('pickup_date').required      = selfPickup;
+    document.getElementById('delivery_address').required  = !selfPickup;
+}
+document.getElementById('pickup_date').min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

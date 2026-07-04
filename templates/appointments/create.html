@@ -11,36 +11,74 @@
                     <h5 class="card-title mb-0">Create New Appointment</h5>
                 </div>
                 <div class="card-body">
+                    {% if prefill_req %}
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-calendar-plus me-2"></i>
+                        Creating appointment from request <strong>{{ prefill_req.request_number }}</strong>
+                        {% if prefill_req.patient_type == 'new' %}
+                        — <span class="badge bg-primary">New Patient</span>
+                        <strong>{{ prefill_req.patient_name }}</strong>
+                        ({{ prefill_req.mobile_number }})
+                        {% if prefill_req.notes %}
+                        <br><small><i class="fas fa-sticky-note me-1"></i>{{ prefill_req.notes }}</small>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                     <form method="POST" class="needs-validation" novalidate>
+                        {% if req_id_param %}
+                        <input type="hidden" name="req_id" value="{{ req_id_param }}">
+                        {% endif %}
                         {% if current_user.role in ['admin', 'receptionist'] %}
                         <div class="mb-4">
                             <label class="form-label">Search Patient</label>
-                            <div class="input-group mb-2">
-                                <span class="input-group-text">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <input type="text" class="form-control" id="patient_search" 
-                                       placeholder="Search by name, phone number, or patient ID..."
-                                       autocomplete="off">
-                                <button type="button" class="btn btn-outline-secondary" id="clear_search">
-                                    <i class="fas fa-times"></i>
-                                </button>
+
+                            {% if prefill_patient %}
+                            {# Patient prefilled from appointment request #}
+                            <input type="hidden" id="patient_id" name="patient_id" value="{{ prefill_patient.id }}">
+                            <div class="alert alert-success mb-2">
+                                <i class="fas fa-user-check me-2"></i>
+                                <strong>{{ prefill_patient.name }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    ID: {{ prefill_patient.patient_number or '—' }} &nbsp;|&nbsp;
+                                    Phone: {{ prefill_patient.mobile_number or '—' }} &nbsp;|&nbsp;
+                                    Email: {{ prefill_patient.email }}
+                                </small>
+                                <br>
+                                <a href="#" onclick="document.getElementById('patient_id').value='';this.closest('.alert').remove();document.getElementById('patient-search-box').style.display='block';return false;"
+                                   class="small text-muted">Change patient</a>
                             </div>
-                            <input type="hidden" id="patient_id" name="patient_id" required>
-                            <div class="invalid-feedback">
-                                Please select a patient.
-                            </div>
-                            <!-- Search Results Dropdown -->
-                            <div id="search_results" class="list-group mt-2 shadow-sm" 
-                                 style="display: none; max-height: 200px; overflow-y: auto; position: absolute; width: 95%; z-index: 1000; background: white;">
-                            </div>
-                            <!-- Selected Patient Info -->
-                            <div id="selected_patient_info" class="mt-2" style="display: none;">
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-user-check me-2"></i>
-                                    Selected Patient: <strong id="selected_patient_name"></strong>
-                                    <br>
-                                    <small class="text-muted" id="selected_patient_details"></small>
+                            <div id="patient-search-box" style="display:none;">
+                            {% else %}
+                            <div id="patient-search-box">
+                            {% endif %}
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="patient_search"
+                                           placeholder="Search by name, phone number, or patient ID..."
+                                           autocomplete="off">
+                                    <button type="button" class="btn btn-outline-secondary" id="clear_search">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {% if not prefill_patient %}
+                                <input type="hidden" id="patient_id" name="patient_id" required>
+                                {% endif %}
+                                <div class="invalid-feedback">Please select a patient.</div>
+                                <div id="search_results" class="list-group mt-2 shadow-sm"
+                                     style="display: none; max-height: 200px; overflow-y: auto; position: absolute; width: 95%; z-index: 1000; background: white;">
+                                </div>
+                                <div id="selected_patient_info" class="mt-2" style="display: none;">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="fas fa-user-check me-2"></i>
+                                        Selected Patient: <strong id="selected_patient_name"></strong>
+                                        <br>
+                                        <small class="text-muted" id="selected_patient_details"></small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -93,8 +131,8 @@
                             <label for="patient_type" class="form-label">Patient Type <span class="text-danger">*</span></label>
                             <select class="form-select" id="patient_type" name="patient_type" required>
                                 <option value="">Select patient type</option>
-                                <option value="new">New Patient</option>
-                                <option value="existing">Existing Patient</option>
+                                <option value="new"    {{ 'selected' if prefill_req and prefill_req.patient_type == 'new'      }}>New Patient</option>
+                                <option value="existing" {{ 'selected' if not prefill_req or prefill_req.patient_type == 'existing' }}>Existing Patient</option>
                             </select>
                             <div class="form-text">
                                 <i class="fas fa-info-circle text-primary"></i>
@@ -148,8 +186,8 @@
 
                         <div class="mb-3">
                             <label for="notes" class="form-label">Administrative Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="2" 
-                                    placeholder="Any administrative notes or special instructions"></textarea>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"
+                                    placeholder="Any administrative notes or special instructions">{{ prefill_req.notes if prefill_req and prefill_req.notes else '' }}</textarea>
                         </div>
 
                         {% if current_user.role == 'doctor' %}

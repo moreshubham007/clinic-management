@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Medicine Orders{% endblock %}
+{% block header_title %}💊 Medicine Orders{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Stats row -->
+    <div class="row g-3 mb-4">
+        {% set status_info = [
+            ('pending',    'Pending',    'fas fa-clock',        'warning', 'text-dark'),
+            ('processing', 'Processing', 'fas fa-cog',          'info',    'text-white'),
+            ('ready',      'Ready',      'fas fa-check-circle', 'success', 'text-white'),
+            ('delivered',  'Delivered',  'fas fa-home',         'primary', 'text-white'),
+        ] %}
+        {% for s, label, icon, color, text in status_info %}
+        <div class="col-6 col-md-3">
+            <a href="{{ url_for('medicines.manage_orders', status=s) }}" class="text-decoration-none">
+                <div class="card text-center h-100 border-0 bg-{{ color }} bg-opacity-10">
+                    <div class="card-body py-3">
+                        <i class="{{ icon }} fs-3 text-{{ color }} mb-1"></i>
+                        <div class="fw-bold fs-4 text-{{ color }}">
+                            {{ orders | selectattr('status', 'eq', s) | list | length }}
+                        </div>
+                        <small class="text-muted">{{ label }}</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Filter bar -->
+    <div class="card mb-4">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="fw-semibold me-2">Filter:</span>
+                <a href="{{ url_for('medicines.manage_orders') }}"
+                   class="btn btn-sm {{ 'btn-primary' if not status_filter else 'btn-outline-secondary' }}">All</a>
+                {% for s, label, _, _, _ in status_info %}
+                <a href="{{ url_for('medicines.manage_orders', status=s) }}"
+                   class="btn btn-sm {{ 'btn-primary' if status_filter == s else 'btn-outline-secondary' }}">{{ label }}</a>
+                {% endfor %}
+                <a href="{{ url_for('medicines.manage_orders', status='cancelled') }}"
+                   class="btn btn-sm {{ 'btn-primary' if status_filter == 'cancelled' else 'btn-outline-secondary' }}">Cancelled</a>
+            </div>
+        </div>
+    </div>
+
+    {% if orders %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Mobile</th>
+                            <th>Patient ID</th>
+                            <th>Duration</th>
+                            <th>Delivery</th>
+                            <th>Placed On</th>
+                            <th>Status</th>
+                            <th class="text-center">Update Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td><code>{{ order.order_number }}</code></td>
+                        <td>{{ order.mobile_number }}</td>
+                        <td>{{ order.patient_number or '—' }}</td>
+                        <td>{{ order.duration_days }} days</td>
+                        <td>
+                            {% if order.delivery_type == 'self_pickup' %}
+                                <i class="fas fa-store-alt text-success me-1"></i>Pickup
+                                {% if order.pickup_date %}
+                                <br><small class="text-muted">{{ order.pickup_date.strftime('%d %b') }}</small>
+                                {% endif %}
+                            {% else %}
+                                <i class="fas fa-truck text-info me-1"></i>Courier
+                                {% if order.courier_name %}
+                                <br><small class="text-muted">{{ order.courier_name }}</small>
+                                {% endif %}
+                                {% if order.courier_awb %}
+                                <br><small class="fw-semibold">AWB: {{ order.courier_awb }}</small>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td><small>{{ order.created_at.strftime('%d %b %Y') }}<br>{{ order.created_at.strftime('%I:%M %p') }}</small></td>
+                        <td>
+                            <span class="badge
+                                {% if order.status == 'pending' %}bg-warning text-dark
+                                {% elif order.status == 'processing' %}bg-info
+                                {% elif order.status == 'ready' %}bg-success
+                                {% elif order.status == 'delivered' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {{ order.status | title }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex gap-1 align-items-center justify-content-center">
+                                <form method="POST"
+                                      action="{{ url_for('medicines.update_order_status', order_id=order.id, status=status_filter) }}"
+                                      class="d-inline-flex gap-1 align-items-center">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="status" class="form-select form-select-sm" style="width:120px;">
+                                        {% for s in ['pending','processing','ready','delivered','cancelled'] %}
+                                        <option value="{{ s }}" {{ 'selected' if order.status == s }}>{{ s | title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary" title="Update Status">
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                </form>
+                                {% if order.delivery_type == 'courier' %}
+                                <button class="btn btn-sm btn-outline-info" title="Add Courier Details"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#courier-{{ order.id }}">
+                                    <i class="fas fa-shipping-fast"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Notes / Address row -->
+                    {% if order.additional_notes or order.delivery_address %}
+                    <tr class="table-light">
+                        <td colspan="8" class="py-1 ps-4">
+                            <small class="text-muted">
+                                {% if order.delivery_address %}<i class="fas fa-map-marker-alt me-1"></i>{{ order.delivery_address }} &nbsp;{% endif %}
+                                {% if order.additional_notes %}<i class="fas fa-sticky-note me-1"></i>{{ order.additional_notes }}{% endif %}
+                            </small>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Courier details collapse row (only for courier orders) -->
+                    {% if order.delivery_type == 'courier' %}
+                    <tr class="collapse" id="courier-{{ order.id }}">
+                        <td colspan="8" class="bg-light py-2 px-4">
+                            <form method="POST"
+                                  action="{{ url_for('medicines.update_courier_details', order_id=order.id, status=status_filter) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Courier Company</label>
+                                        <select name="courier_name" class="form-select form-select-sm">
+                                            <option value="">-- Select --</option>
+                                            {% set couriers = ['Delhivery', 'BlueDart', 'DTDC', 'Ekart', 'Xpressbees', 'Shadowfax', 'India Post', 'FedEx', 'DHL', 'Other'] %}
+                                            {% for c in couriers %}
+                                            <option value="{{ c }}" {{ 'selected' if order.courier_name == c }}>{{ c }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">AWB / Tracking No.</label>
+                                        <input type="text" class="form-control form-control-sm"
+                                               name="courier_awb" placeholder="e.g. 123456789012"
+                                               value="{{ order.courier_awb or '' }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Tracking URL <small class="text-muted">(optional)</small></label>
+                                        <input type="url" class="form-control form-control-sm"
+                                               name="courier_tracking_url" placeholder="https://track.delhivery.com/..."
+                                               value="{{ order.courier_tracking_url or '' }}">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-sm btn-info w-100 text-white">
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </div>
+                                </div>
+                                {% if order.courier_awb %}
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                        Tracking saved — AWB: <strong>{{ order.courier_awb }}</strong>
+                                        {% if order.courier_tracking_url %}
+                                        &nbsp;|&nbsp;
+                                        <a href="{{ order.courier_tracking_url }}" target="_blank" class="text-info">
+                                            <i class="fas fa-external-link-alt me-1"></i>Open Tracking Link
+                                        </a>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="fas fa-box-open fs-1 mb-3 d-block"></i>
+            No medicine orders found{% if status_filter %} for status <strong>{{ status_filter }}</strong>{% endif %}.
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

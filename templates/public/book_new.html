@@ -1,0 +1,110 @@
+{% extends "public/public_base.html" %}
+{% block title %}New Patient Appointment{% endblock %}
+{% block header_title %}Book Appointment{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+    <div class="pub-brand">
+        <span class="leaf">🌿</span>
+        <div>
+            <h1>New Patient</h1>
+            <p>Fill in your details to request an appointment</p>
+        </div>
+    </div>
+
+    <a href="{{ url_for('public_appt.book_landing') }}" class="pub-back">
+        <i class="fas fa-arrow-left"></i> Back to options
+    </a>
+
+    <div class="pub-card">
+        <div class="pub-card-header">
+            <h5><i class="fas fa-user-plus me-2"></i>Your Details</h5>
+            <small>We'll call you to confirm your appointment</small>
+        </div>
+        <div class="pub-card-body">
+            <form method="POST" id="newForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-section-title"><span class="step-badge">1</span> Personal Info</div>
+
+                <!-- Name -->
+                <div class="float-field">
+                    <input type="text" name="patient_name" placeholder=" " required autocomplete="name">
+                    <label>Full Name *</label>
+                    <i class="fas fa-user field-icon"></i>
+                </div>
+
+                <!-- Mobile -->
+                <div class="float-field">
+                    <input type="tel" name="mobile_number" placeholder=" " required inputmode="tel" autocomplete="tel">
+                    <label>Mobile Number *</label>
+                    <i class="fas fa-phone field-icon"></i>
+                </div>
+
+                <!-- Email -->
+                <div class="float-field">
+                    <input type="email" name="patient_email" placeholder=" " inputmode="email" autocomplete="email">
+                    <label>Email (optional)</label>
+                    <i class="fas fa-envelope field-icon"></i>
+                </div>
+
+                <!-- Gender -->
+                <div class="mb-3">
+                    <div class="form-label">Gender <span class="text-muted fw-normal">(optional)</span></div>
+                    <div class="chip-group">
+                        {% for g, icon in [('male','♂'), ('female','♀'), ('other','⚧')] %}
+                        <div class="chip-radio">
+                            <input type="radio" name="patient_gender" id="g_{{ g }}" value="{{ g }}">
+                            <label for="g_{{ g }}">{{ icon }} {{ g | title }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-section-title"><span class="step-badge">2</span> Preferred Slot</div>
+
+                <!-- Date -->
+                <div class="float-field">
+                    <input type="date" name="preferred_date" id="prefDate" placeholder=" ">
+                    <label>Preferred Date (optional)</label>
+                </div>
+
+                <!-- Time preference -->
+                <div class="mb-3">
+                    <div class="form-label">Preferred Time <span class="text-muted fw-normal">(optional)</span></div>
+                    <div class="chip-group">
+                        {% set slots = [('09:00-11:00','🌅 9–11 AM'), ('11:00-13:00','☀️ 11–1 PM'), ('14:00-16:00','🕑 2–4 PM'), ('16:00-18:00','🌇 4–6 PM')] %}
+                        {% for val, label in slots %}
+                        <div class="chip-radio">
+                            <input type="radio" name="preferred_time" id="t_{{ loop.index }}" value="{{ val }}">
+                            <label for="t_{{ loop.index }}">{{ label }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="float-field">
+                    <textarea name="notes" placeholder=" " rows="3" style="min-height:90px;resize:none;"></textarea>
+                    <label>Reason / Concern (optional)</label>
+                </div>
+
+                <div class="pub-submit-spacer"></div>
+                <div class="pub-submit-bar">
+                    <button type="submit" class="btn-green">
+                        <i class="fas fa-calendar-check"></i> Submit Appointment Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('prefDate').min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

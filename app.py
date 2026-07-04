@@ -103,6 +103,8 @@ from routes.cases import cases_bp
 from routes.receptionist import receptionist_bp
 from routes.waiting_area import waiting_area_bp
 from routes.api.patient import patient_api_bp
+from routes.medicines import medicines_bp
+from routes.public_appointments import public_appt_bp
 
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(admin_bp, url_prefix='/admin')
@@ -115,6 +117,8 @@ app.register_blueprint(receptionist_bp, url_prefix='/receptionist')
 app.register_blueprint(waiting_area_bp, url_prefix='/waiting-area')
 app.register_blueprint(patient_api_bp, url_prefix='/api')
 app.register_blueprint(swagger_ui_blueprint, url_prefix='/api/docs')
+app.register_blueprint(medicines_bp, url_prefix='/medicines')
+app.register_blueprint(public_appt_bp, url_prefix='/book')
 
 # Basic error handlers
 @app.errorhandler(404)

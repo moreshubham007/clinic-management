@@ -1,0 +1,76 @@
+{% extends "public/public_base.html" %}
+{% block title %}Book Appointment{% endblock %}
+{% block header_title %}Book Appointment{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+    {% if submitted %}
+    <!-- ── Success ── -->
+    <div class="pub-card" style="margin-top:1rem;">
+        <div class="success-card">
+            <div class="success-icon"><i class="fas fa-check"></i></div>
+            <h3 class="fw-bold mb-1" style="color:var(--g800);">Request Submitted!</h3>
+            <p class="text-muted mb-1" style="font-size:0.95rem;">
+                Hello{% if patient_name %}, <strong>{{ patient_name }}</strong>{% endif %}!
+            </p>
+            <p class="text-muted mb-3" style="font-size:0.88rem;">Our team will call you shortly to confirm.</p>
+            <div class="form-label mb-0" style="color:var(--g600);">Your Reference Number</div>
+            <div class="ref-box">{{ ref }}</div>
+            <p class="text-muted mb-4" style="font-size:0.78rem;">📸 Screenshot this for tracking your request</p>
+            <div class="d-flex gap-2 justify-content-center">
+                <a href="{{ url_for('public_appt.book_landing') }}" class="btn-ghost">
+                    <i class="fas fa-redo"></i> Book Another
+                </a>
+                <a href="{{ url_for('medicines.order_medicine') }}" class="btn-green-sm">
+                    <i class="fas fa-pills"></i> Order Medicines
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="pub-brand">
+        <span class="leaf">🌿</span>
+        <div>
+            <h1>Book an Appointment</h1>
+            <p>Quick & easy — takes under a minute</p>
+        </div>
+    </div>
+
+    <!-- ── Choose type ── -->
+    <div class="card-radio-group mb-3">
+        <!-- New Patient -->
+        <a href="{{ url_for('public_appt.book_new_patient') }}" class="text-decoration-none" style="display:block;">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.4rem 0.5rem 1.1rem;border:2px solid #d4e6c3;border-radius:var(--radius-md);background:var(--surface2);gap:0.35rem;transition:all var(--transition);cursor:pointer;" onmouseover="this.style.borderColor='var(--g500)';this.style.background='var(--g50)'" onmouseout="this.style.borderColor='#d4e6c3';this.style.background='var(--surface2)'">
+                <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--g700),var(--g500));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.4rem;box-shadow:0 4px 12px rgba(85,139,47,0.4);margin-bottom:0.4rem;">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div style="font-weight:700;color:var(--g800);font-size:0.95rem;">New Patient</div>
+                <div style="font-size:0.75rem;color:var(--on-surface-muted);">First visit to clinic</div>
+            </div>
+        </a>
+
+        <!-- Existing Patient -->
+        <a href="{{ url_for('public_appt.book_existing_patient') }}" class="text-decoration-none" style="display:block;">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.4rem 0.5rem 1.1rem;border:2px solid #d4e6c3;border-radius:var(--radius-md);background:var(--surface2);gap:0.35rem;transition:all var(--transition);cursor:pointer;" onmouseover="this.style.borderColor='var(--g500)';this.style.background='var(--g50)'" onmouseout="this.style.borderColor='#d4e6c3';this.style.background='var(--surface2)'">
+                <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--g700),var(--g500));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.4rem;box-shadow:0 4px 12px rgba(85,139,47,0.4);margin-bottom:0.4rem;">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div style="font-weight:700;color:var(--g800);font-size:0.95rem;">Existing Patient</div>
+                <div style="font-size:0.75rem;color:var(--on-surface-muted);">Returning visit</div>
+            </div>
+        </a>
+    </div>
+
+    <div class="text-center" style="margin-top:0.5rem;">
+        <small style="color:var(--on-surface-muted);">
+            <i class="fas fa-pills me-1" style="color:var(--g500);"></i>
+            Need to order medicines?
+            <a href="{{ url_for('medicines.order_medicine') }}" style="color:var(--g700);font-weight:600;">Order here →</a>
+        </small>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

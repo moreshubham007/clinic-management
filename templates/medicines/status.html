@@ -1,0 +1,131 @@
+{% extends "public/public_base.html" %}
+{% block title %}Order {{ order.order_number }}{% endblock %}
+{% block header_title %}Order Status{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+    <div class="pub-brand">
+        <span class="leaf">📦</span>
+        <div>
+            <h1>Order Status</h1>
+            <p style="font-family:monospace;font-size:0.85rem;">{{ order.order_number }}</p>
+        </div>
+        <span class="badge ms-auto rounded-pill px-3 py-2
+            {% if order.status == 'pending' %}bg-warning text-dark
+            {% elif order.status == 'processing' %}bg-info
+            {% elif order.status == 'ready' %}bg-success
+            {% elif order.status == 'delivered' %}bg-light text-dark
+            {% else %}bg-secondary{% endif %}" style="font-size:0.82rem;align-self:flex-start;margin-top:0.1rem;">
+            {{ order.status | title }}
+        </span>
+    </div>
+
+    <!-- Progress -->
+    <div class="pub-card">
+        <div class="pub-card-body">
+            {% set steps   = ['pending','processing','ready','delivered'] %}
+            {% set labels  = ['Order Placed','Processing','Ready','Delivered'] %}
+            {% set icons   = ['fa-clock','fa-cog','fa-check-circle','fa-home'] %}
+            {% set cur_idx = steps.index(order.status) if order.status in steps else -1 %}
+            <div class="progress-steps">
+            {% for step in steps %}
+            {% set idx = loop.index0 %}
+            <div class="progress-step {{ 'done' if idx < cur_idx else ('active' if idx == cur_idx else 'idle') }}">
+                <div class="dot"><i class="fas {{ icons[idx] }}"></i></div>
+                <div class="label">{{ labels[idx] }}</div>
+            </div>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Details -->
+    <div class="pub-card">
+        <div class="pub-card-header"><h5><i class="fas fa-info-circle me-2"></i>Order Details</h5></div>
+        <div class="pub-card-body">
+            <div style="display:grid;gap:0.75rem;">
+
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0.75rem;border-bottom:1px solid var(--g100);">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Mobile</span>
+                    <span style="font-weight:600;">{{ order.mobile_number }}</span>
+                </div>
+
+                {% if order.patient_number %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0.75rem;border-bottom:1px solid var(--g100);">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Patient ID</span>
+                    <span style="font-weight:600;font-family:monospace;">{{ order.patient_number }}</span>
+                </div>
+                {% endif %}
+
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0.75rem;border-bottom:1px solid var(--g100);">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Duration</span>
+                    <span style="font-weight:700;color:var(--g700);">{{ order.duration_days }} Days</span>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:0.75rem;border-bottom:1px solid var(--g100);">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Delivery</span>
+                    <span style="font-weight:600;text-align:right;max-width:60%;">
+                        {% if order.delivery_type == 'self_pickup' %}
+                            🏪 Self Pickup
+                            {% if order.pickup_date %}<br><small style="color:var(--on-surface-muted);">{{ order.pickup_date.strftime('%d %b %Y') }}</small>{% endif %}
+                        {% else %}
+                            🚚 Courier
+                            {% if order.delivery_address %}<br><small style="color:var(--on-surface-muted);">{{ order.delivery_address }}</small>{% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% if order.courier_awb %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0.75rem;border-bottom:1px solid var(--g100);">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">AWB No.</span>
+                    <span style="font-weight:700;font-family:monospace;color:var(--g800);">
+                        {% if order.courier_name %}<span class="badge bg-secondary me-1" style="font-family:sans-serif;font-size:0.7rem;">{{ order.courier_name }}</span>{% endif %}
+                        {{ order.courier_awb }}
+                    </span>
+                </div>
+                {% endif %}
+
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Placed On</span>
+                    <span style="font-weight:600;font-size:0.88rem;">{{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                </div>
+
+                {% if order.additional_notes %}
+                <div style="background:var(--g50);border-radius:var(--radius-sm);padding:0.75rem;margin-top:0.25rem;">
+                    <div style="font-size:0.75rem;color:var(--g700);font-weight:700;margin-bottom:0.25rem;">📝 Notes</div>
+                    <div style="font-size:0.88rem;color:var(--on-surface);">{{ order.additional_notes }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if order.courier_tracking_url %}
+            <a href="{{ order.courier_tracking_url }}" target="_blank" class="btn-green mt-3">
+                <i class="fas fa-external-link-alt"></i> Track on {{ order.courier_name or 'Courier' }} Website
+            </a>
+            {% endif %}
+
+            {% if order.status == 'cancelled' %}
+            <div class="pub-alert-info mt-3" style="background:#ffeaea;border-left-color:#f44336;color:#b71c1c;">
+                <i class="fas fa-times-circle me-2"></i>This order was cancelled. Please contact the clinic.
+            </div>
+            {% elif order.status == 'delivered' %}
+            <div class="pub-alert-success mt-3">
+                <i class="fas fa-check-circle me-2" style="color:var(--g600);"></i>Your medicines have been delivered. Thank you!
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer actions -->
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('medicines.order_medicine') }}" class="btn-ghost flex-fill" style="justify-content:center;">
+            <i class="fas fa-plus"></i> New Order
+        </a>
+        <a href="{{ url_for('medicines.track_medicine') }}" class="btn-ghost flex-fill" style="justify-content:center;">
+            <i class="fas fa-search"></i> Track Another
+        </a>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Appointment Requests{% endblock %}
+{% block header_title %}📋 Appointment Requests{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        {% set stats = [
+            ('pending',   'Pending',   'fas fa-clock',        'warning', 'text-dark'),
+            ('confirmed', 'Confirmed', 'fas fa-check-circle', 'success', 'text-white'),
+            ('cancelled', 'Cancelled', 'fas fa-times-circle', 'danger',  'text-white'),
+        ] %}
+        {% for s, label, icon, color, text in stats %}
+        <div class="col-4">
+            <a href="{{ url_for('public_appt.appointment_requests', status=s) }}" class="text-decoration-none">
+                <div class="card text-center border-0 bg-{{ color }} bg-opacity-10">
+                    <div class="card-body py-3">
+                        <i class="{{ icon }} fs-3 text-{{ color }} mb-1"></i>
+                        <div class="fw-bold fs-4 text-{{ color }}">
+                            {{ requests | selectattr('status', 'eq', s) | list | length }}
+                        </div>
+                        <small class="text-muted">{{ label }}</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Filter -->
+    <div class="card mb-4">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="fw-semibold me-2">Filter:</span>
+                <a href="{{ url_for('public_appt.appointment_requests') }}"
+                   class="btn btn-sm {{ 'btn-primary' if not status_filter else 'btn-outline-secondary' }}">All</a>
+                {% for s, label, _, _, _ in stats %}
+                <a href="{{ url_for('public_appt.appointment_requests', status=s) }}"
+                   class="btn btn-sm {{ 'btn-primary' if status_filter == s else 'btn-outline-secondary' }}">{{ label }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if requests %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ref No.</th>
+                            <th>Type</th>
+                            <th>Patient</th>
+                            <th>Mobile</th>
+                            <th>Preferred Date / Time</th>
+                            <th>Notes</th>
+                            <th>Submitted</th>
+                            <th>Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td><code>{{ req.request_number }}</code></td>
+                        <td>
+                            {% if req.patient_type == 'new' %}
+                                <span class="badge bg-primary">New</span>
+                            {% else %}
+                                <span class="badge bg-success">Existing</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if req.patient_type == 'new' %}
+                                <div>{{ req.patient_name or '—' }}</div>
+                                {% if req.patient_email %}<small class="text-muted">{{ req.patient_email }}</small>{% endif %}
+                                {% if req.patient_gender %}<small class="badge bg-light text-dark">{{ req.patient_gender | title }}</small>{% endif %}
+                            {% else %}
+                                {% if req.patient %}
+                                    <div>{{ req.patient.name }}</div>
+                                    <small class="text-muted">{{ req.patient_number or req.patient.patient_number }}</small>
+                                {% else %}
+                                    <span class="text-muted">{{ req.patient_number or '—' }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>{{ req.mobile_number }}</td>
+                        <td>
+                            {% if req.preferred_date %}
+                                {{ req.preferred_date.strftime('%d %b %Y') }}
+                                {% if req.preferred_time %}<br><small class="text-muted">{{ req.preferred_time }}</small>{% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if req.notes %}
+                                <span title="{{ req.notes }}" style="cursor:help;">
+                                    {{ req.notes[:40] }}{% if req.notes|length > 40 %}…{% endif %}
+                                </span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><small>{{ req.created_at.strftime('%d %b %Y') }}<br>{{ req.created_at.strftime('%I:%M %p') }}</small></td>
+                        <td>
+                            <span class="badge
+                                {% if req.status == 'pending' %}bg-warning text-dark
+                                {% elif req.status == 'confirmed' %}bg-success
+                                {% else %}bg-danger{% endif %}">
+                                {{ req.status | title }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            {% if req.status == 'pending' %}
+                            <div class="d-flex gap-1 justify-content-center">
+                                <form method="POST"
+                                      action="{{ url_for('public_appt.confirm_request', req_id=req.id, status=status_filter) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Confirm">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </form>
+                                <form method="POST"
+                                      action="{{ url_for('public_appt.cancel_request', req_id=req.id, status=status_filter) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Cancel"
+                                            onclick="return confirm('Cancel this request?')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                                <a href="{{ url_for('appointments.create_appointment', req_id=req.id) }}"
+                                   class="btn btn-sm btn-outline-primary" title="Create Appointment">
+                                    <i class="fas fa-calendar-plus"></i>
+                                </a>
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="fas fa-calendar-times fs-1 mb-3 d-block"></i>
+            No appointment requests found{% if status_filter %} with status <strong>{{ status_filter }}</strong>{% endif %}.
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

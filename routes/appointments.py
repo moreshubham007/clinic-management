@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Doctor, Appointment, Case, CaseHistory, WaitingArea
+from models import User, Doctor, Appointment, Case, CaseHistory, WaitingArea, AppointmentRequest
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -87,20 +87,31 @@ def create_appointment():
         flash('You do not have permission to create appointments', 'danger')
         return redirect(url_for('appointments.list_appointments'))
     
+    # Preserve req_id and patient_id across validation failures
+    req_id_param = request.args.get('req_id', type=int)
+    patient_id_param = request.args.get('patient_id', type=int)
+
     if request.method == 'POST':
         # For doctors, automatically set themselves as the doctor
         if current_user.role == 'doctor':
             doctor_id = current_user.doctor.id
         else:
             doctor_id = request.form.get('doctor_id')
-            
-        patient_id = request.form.get('patient_id') if current_user.role in ['admin', 'receptionist', 'doctor'] else current_user.id
+
+        # Accept patient_id from form body OR query string
+        if current_user.role in ['admin', 'receptionist', 'doctor']:
+            patient_id = request.form.get('patient_id') or request.args.get('patient_id')
+        else:
+            patient_id = current_user.id
+
         date_str = request.form.get('date')
         time_str = request.form.get('time')
-        
+
         if not all([doctor_id, patient_id, date_str, time_str]):
             flash('Please fill in all required fields', 'danger')
-            return redirect(url_for('appointments.create_appointment'))
+            return redirect(url_for('appointments.create_appointment',
+                                    req_id=req_id_param,
+                                    patient_id=patient_id or patient_id_param))
         
         try:
             appointment_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
@@ -108,17 +119,19 @@ def create_appointment():
             # Check if the appointment time is in the future
             if appointment_datetime < datetime.now():
                 flash('Appointment time must be in the future', 'danger')
-                return redirect(url_for('appointments.create_appointment'))
-            
+                return redirect(url_for('appointments.create_appointment',
+                                        req_id=req_id_param, patient_id=patient_id))
+
             # Check if the doctor is available at this time
             existing_appointment = Appointment.query.filter_by(
                 doctor_id=doctor_id,
                 datetime=appointment_datetime
             ).first()
-            
+
             if existing_appointment:
                 flash('This time slot is already booked', 'danger')
-                return redirect(url_for('appointments.create_appointment'))
+                return redirect(url_for('appointments.create_appointment',
+                                        req_id=req_id_param, patient_id=patient_id))
             
             appointment = Appointment(
                 doctor_id=doctor_id,
@@ -138,18 +151,36 @@ def create_appointment():
             
         except ValueError:
             flash('Invalid date or time format', 'danger')
-            return redirect(url_for('appointments.create_appointment'))
-    
+            return redirect(url_for('appointments.create_appointment',
+                                    req_id=req_id_param, patient_id=patient_id_param))
+
     # For GET request - prepare data for the form
     if current_user.role == 'doctor':
-        # Doctors can only create appointments for themselves
-        doctors = [current_user.doctor]  # Only show themselves as an option
+        doctors = [current_user.doctor]
     else:
         doctors = Doctor.query.join(User).filter(User.is_active == True).all()
-    
+
     patients = User.query.filter_by(role='patient').all() if current_user.role in ['admin', 'receptionist', 'doctor'] else None
-    
-    return render_template('appointments/create.html', doctors=doctors, patients=patients)
+
+    # Prefill patient from req_id or direct patient_id query param
+    prefill_patient = None
+    prefill_req = None
+
+    if req_id_param:
+        prefill_req = AppointmentRequest.query.get(req_id_param)
+        if prefill_req and prefill_req.patient_id:
+            prefill_patient = User.query.get(prefill_req.patient_id)
+
+    # Fallback: patient_id passed directly in query string
+    if not prefill_patient and patient_id_param:
+        prefill_patient = User.query.get(patient_id_param)
+
+    return render_template('appointments/create.html',
+                           doctors=doctors,
+                           patients=patients,
+                           prefill_patient=prefill_patient,
+                           prefill_req=prefill_req,
+                           req_id_param=req_id_param)
 
 @appointments_bp.route('/<int:appointment_id>/cancel', methods=['POST'])
 @login_required

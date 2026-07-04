@@ -157,6 +157,46 @@ class CaseTransfer(db.Model):
     to_doctor = db.relationship('Doctor', foreign_keys=[to_doctor_id], backref='transfers_received')
     patient = db.relationship('User', foreign_keys=[patient_id], backref='case_transfers')
 
+class MedicineOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(20), unique=True, nullable=False)
+    mobile_number = db.Column(db.String(15), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    patient_number = db.Column(db.String(11))
+    duration_days = db.Column(db.Integer, nullable=False)       # 15, 30, 45
+    delivery_type = db.Column(db.String(20), nullable=False)    # self_pickup / courier
+    pickup_date = db.Column(db.Date)
+    delivery_address = db.Column(db.Text)
+    courier_name = db.Column(db.String(100))
+    courier_awb = db.Column(db.String(100))
+    courier_tracking_url = db.Column(db.String(500))
+    additional_notes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')        # pending/processing/ready/delivered/cancelled
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now())
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
+    patient = db.relationship('User', backref='medicine_orders', foreign_keys=[patient_id])
+
+
+class AppointmentRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    request_number = db.Column(db.String(20), unique=True, nullable=False)
+    patient_type = db.Column(db.String(20), nullable=False)     # new / existing
+    mobile_number = db.Column(db.String(15), nullable=False)
+    preferred_date = db.Column(db.Date)
+    preferred_time = db.Column(db.String(30))
+    notes = db.Column(db.Text)
+    # New-patient detail fields
+    patient_name = db.Column(db.String(100))
+    patient_email = db.Column(db.String(120))
+    patient_gender = db.Column(db.String(10))
+    # Existing-patient link
+    patient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    patient_number = db.Column(db.String(11))
+    status = db.Column(db.String(20), default='pending')        # pending/confirmed/cancelled
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now())
+    patient = db.relationship('User', backref='appointment_requests', foreign_keys=[patient_id])
+
+
 class WaitingArea(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'), nullable=False)

@@ -1,0 +1,140 @@
+{% extends "public/public_base.html" %}
+{% block title %}Track Order{% endblock %}
+{% block header_title %}Track Order{% endblock %}
+
+{% block content %}
+<div class="public-wrap">
+
+    <div class="pub-brand">
+        <span class="leaf">📦</span>
+        <div>
+            <h1>Track Your Order</h1>
+            <p>Check live status of your medicine order</p>
+        </div>
+    </div>
+
+    <div class="pub-tabs">
+        <a href="{{ url_for('medicines.order_medicine') }}" class="pub-tab">
+            <i class="fas fa-plus-circle"></i>New Order
+        </a>
+        <a href="{{ url_for('medicines.track_medicine') }}" class="pub-tab active">
+            <i class="fas fa-box"></i>Track Order
+        </a>
+    </div>
+
+    <div class="pub-card">
+        <div class="pub-card-header">
+            <h5><i class="fas fa-search me-2"></i>Find Your Order</h5>
+        </div>
+        <div class="pub-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="float-field">
+                    <input type="tel" name="mobile_number" placeholder=" " required inputmode="tel">
+                    <label>Mobile Number *</label>
+                    <i class="fas fa-phone field-icon"></i>
+                </div>
+
+                <div class="float-field">
+                    <input type="text" name="identifier" placeholder=" " required>
+                    <label>Order ID or Patient ID *</label>
+                    <i class="fas fa-hashtag field-icon"></i>
+                </div>
+                <div class="form-text mb-3">e.g. MED-00001 or INRI-00001</div>
+
+                <div class="pub-submit-spacer"></div>
+                <div class="pub-submit-bar">
+                    <button type="submit" class="btn-green">
+                        <i class="fas fa-search"></i> View Order Status
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if searched and order %}
+    <!-- ── Result card ── -->
+    <div class="pub-card">
+        <div class="pub-card-header d-flex align-items-center justify-content-between">
+            <div>
+                <h5 class="mb-0"><code style="background:rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:0.9rem;">{{ order.order_number }}</code></h5>
+                <small>{{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</small>
+            </div>
+            <span class="badge rounded-pill px-3 py-2
+                {% if order.status == 'pending' %}bg-warning text-dark
+                {% elif order.status == 'processing' %}bg-info
+                {% elif order.status == 'ready' %}bg-success
+                {% elif order.status == 'delivered' %}bg-primary
+                {% else %}bg-secondary{% endif %}" style="font-size:0.82rem;">
+                {{ order.status | title }}
+            </span>
+        </div>
+        <div class="pub-card-body">
+
+            {% set steps   = ['pending','processing','ready','delivered'] %}
+            {% set labels  = ['Placed','Processing','Ready','Delivered'] %}
+            {% set icons   = ['fa-clock','fa-cog fa-spin','fa-check-circle','fa-home'] %}
+            {% set cur_idx = steps.index(order.status) if order.status in steps else -1 %}
+            <div class="progress-steps mb-4">
+            {% for step in steps %}
+            {% set idx = loop.index0 %}
+            <div class="progress-step {{ 'done' if idx < cur_idx else ('active' if idx == cur_idx else 'idle') }}">
+                <div class="dot"><i class="fas {{ icons[idx] }}"></i></div>
+                <div class="label">{{ labels[idx] }}</div>
+            </div>
+            {% endfor %}
+            </div>
+
+            <div style="background:var(--surface2);border-radius:var(--radius-md);padding:1rem;margin-bottom:0.75rem;">
+                <div class="d-flex justify-content-between mb-2">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Duration</span>
+                    <span style="font-weight:700;color:var(--g800);">{{ order.duration_days }} Days</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">Delivery</span>
+                    <span style="font-weight:600;">
+                        {% if order.delivery_type == 'self_pickup' %}
+                            🏪 Self Pickup{% if order.pickup_date %} · {{ order.pickup_date.strftime('%d %b') }}{% endif %}
+                        {% else %}
+                            🚚 Courier{% if order.courier_name %} · {{ order.courier_name }}{% endif %}
+                        {% endif %}
+                    </span>
+                </div>
+                {% if order.courier_awb %}
+                <div class="d-flex justify-content-between">
+                    <span style="font-size:0.82rem;color:var(--on-surface-muted);">AWB No.</span>
+                    <span style="font-weight:700;font-family:monospace;color:var(--g800);">{{ order.courier_awb }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if order.courier_tracking_url %}
+            <a href="{{ order.courier_tracking_url }}" target="_blank" class="btn-green" style="margin-bottom:0.5rem;">
+                <i class="fas fa-external-link-alt"></i> Track on {{ order.courier_name or 'Courier' }} Website
+            </a>
+            {% endif %}
+
+            {% if order.status == 'cancelled' %}
+            <div class="pub-alert-info" style="background:#ffeaea;border-left-color:#f44336;color:#b71c1c;">
+                <i class="fas fa-times-circle me-2"></i>This order was cancelled. Please contact the clinic.
+            </div>
+            {% elif order.status == 'delivered' %}
+            <div class="pub-alert-success">
+                <i class="fas fa-check-circle me-2" style="color:var(--g600);"></i>Your medicines have been delivered. Thank you!
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif searched %}
+    <div class="pub-card">
+        <div class="pub-card-body text-center py-4">
+            <i class="fas fa-box-open fa-2x mb-2" style="color:var(--g300);"></i>
+            <div style="font-weight:600;color:var(--on-surface-muted);">No order found</div>
+            <div style="font-size:0.85rem;color:#aaa;margin-top:0.3rem;">Please check your mobile number and Order / Patient ID</div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
