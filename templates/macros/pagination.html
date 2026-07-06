@@ -1,0 +1,74 @@
+{% macro render_pagination(pagination, endpoint, status='') %}
+{% if pagination.pages > 1 %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3 px-1">
+
+    <small class="text-muted">
+        Showing <strong>{{ (pagination.page - 1) * pagination.per_page + 1 }}</strong>–<strong>{{ [pagination.page * pagination.per_page, pagination.total] | min }}</strong>
+        of <strong>{{ pagination.total }}</strong> records
+    </small>
+
+    <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1" style="flex-wrap:wrap;">
+
+            <!-- Prev -->
+            <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                <a class="page-link rounded-3"
+                   href="{{ url_for(endpoint, page=pagination.prev_num, status=status) if pagination.has_prev else '#' }}"
+                   style="border:none;background:{{ 'var(--purple-100)' if pagination.has_prev else '#f1f1f1' }};color:{{ 'var(--purple-700)' if pagination.has_prev else '#aaa' }};">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+
+            <!-- Page numbers -->
+            {% set ns = namespace(start=pagination.page - 2, end=pagination.page + 2) %}
+            {% if ns.start < 1 %}{% set ns.start = 1 %}{% endif %}
+            {% if ns.end > pagination.pages %}{% set ns.end = pagination.pages %}{% endif %}
+
+            {% if ns.start > 1 %}
+            <li class="page-item">
+                <a class="page-link rounded-3" href="{{ url_for(endpoint, page=1, status=status) }}"
+                   style="border:none;background:var(--purple-100);color:var(--purple-700);">1</a>
+            </li>
+            {% if ns.start > 2 %}
+            <li class="page-item disabled">
+                <span class="page-link" style="border:none;background:transparent;">…</span>
+            </li>
+            {% endif %}
+            {% endif %}
+
+            {% for p in range(ns.start, ns.end + 1) %}
+            <li class="page-item {{ 'active' if p == pagination.page }}">
+                <a class="page-link rounded-3"
+                   href="{{ url_for(endpoint, page=p, status=status) }}"
+                   style="border:none;{% if p == pagination.page %}background:linear-gradient(135deg,var(--purple-600),var(--purple-700));color:white;{% else %}background:var(--purple-100);color:var(--purple-700);{% endif %}">
+                    {{ p }}
+                </a>
+            </li>
+            {% endfor %}
+
+            {% if ns.end < pagination.pages %}
+            {% if ns.end < pagination.pages - 1 %}
+            <li class="page-item disabled">
+                <span class="page-link" style="border:none;background:transparent;">…</span>
+            </li>
+            {% endif %}
+            <li class="page-item">
+                <a class="page-link rounded-3" href="{{ url_for(endpoint, page=pagination.pages, status=status) }}"
+                   style="border:none;background:var(--purple-100);color:var(--purple-700);">{{ pagination.pages }}</a>
+            </li>
+            {% endif %}
+
+            <!-- Next -->
+            <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                <a class="page-link rounded-3"
+                   href="{{ url_for(endpoint, page=pagination.next_num, status=status) if pagination.has_next else '#' }}"
+                   style="border:none;background:{{ 'var(--purple-100)' if pagination.has_next else '#f1f1f1' }};color:{{ 'var(--purple-700)' if pagination.has_next else '#aaa' }};">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+</div>
+{% endif %}
+{% endmacro %}

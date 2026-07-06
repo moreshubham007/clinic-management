@@ -120,11 +120,28 @@ def track_order(order_number):
 @staff_required
 def manage_orders():
     status_filter = request.args.get('status', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
+
     query = MedicineOrder.query
     if status_filter:
         query = query.filter_by(status=status_filter)
-    orders = query.order_by(MedicineOrder.created_at.desc()).all()
-    return render_template('medicines/manage.html', orders=orders, status_filter=status_filter)
+
+    # Counts per status for stats (unfiltered)
+    from sqlalchemy import func
+    status_counts = {
+        s: MedicineOrder.query.filter_by(status=s).count()
+        for s in ['pending', 'processing', 'ready', 'delivered', 'cancelled']
+    }
+
+    pagination = query.order_by(MedicineOrder.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    return render_template('medicines/manage.html',
+                           orders=pagination.items,
+                           pagination=pagination,
+                           status_filter=status_filter,
+                           status_counts=status_counts)
 
 
 @medicines_bp.route('/manage/<int:order_id>/status', methods=['POST'])
@@ -141,6 +158,39 @@ def update_order_status(order_id):
         flash(f'Order {order.order_number} updated to {new_status}.', 'success')
     else:
         flash('Invalid status.', 'danger')
+    return redirect(url_for('medicines.manage_orders', status=request.args.get('status', '')))
+
+
+@medicines_bp.route('/manage/<int:order_id>/payment', methods=['POST'])
+@login_required
+@staff_required
+def update_payment(order_id):
+    order = MedicineOrder.query.get_or_404(order_id)
+
+    # Payment amount is locked once order is ready, delivered or cancelled
+    locked = order.status in ['ready', 'delivered', 'cancelled']
+    if locked:
+        flash(f'Payment details for {order.order_number} cannot be changed once the order is Ready or Delivered.', 'warning')
+        return redirect(url_for('medicines.manage_orders', status=request.args.get('status', '')))
+
+    payment_status = request.form.get('payment_status', 'unpaid')
+    amount_str = request.form.get('payment_amount', '').strip()
+    payment_mode = request.form.get('payment_mode', '').strip() or None
+
+    order.payment_status = payment_status
+    order.payment_mode = payment_mode
+    if amount_str:
+        try:
+            order.payment_amount = float(amount_str)
+        except ValueError:
+            flash('Invalid payment amount.', 'danger')
+            return redirect(url_for('medicines.manage_orders', status=request.args.get('status', '')))
+    else:
+        order.payment_amount = None
+
+    order.updated_at = datetime.now()
+    db.session.commit()
+    flash(f'Payment details updated for order {order.order_number}.', 'success')
     return redirect(url_for('medicines.manage_orders', status=request.args.get('status', '')))
 
 

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/pagination.html" import render_pagination %}
 
 {% block title %}Appointment Requests{% endblock %}
 {% block header_title %}📋 Appointment Requests{% endblock %}
@@ -20,7 +21,7 @@
                     <div class="card-body py-3">
                         <i class="{{ icon }} fs-3 text-{{ color }} mb-1"></i>
                         <div class="fw-bold fs-4 text-{{ color }}">
-                            {{ requests | selectattr('status', 'eq', s) | list | length }}
+                            {{ status_counts.get(s, 0) }}
                         </div>
                         <small class="text-muted">{{ label }}</small>
                     </div>
@@ -28,6 +29,17 @@
             </a>
         </div>
         {% endfor %}
+    </div>
+
+    <!-- Total info -->
+    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+        <small class="text-muted">
+            {% if pagination.total > 0 %}
+                {{ pagination.total }} request{{ 's' if pagination.total != 1 }} total
+                {% if status_filter %} · filtered by <strong>{{ status_filter }}</strong>{% endif %}
+            {% endif %}
+        </small>
+        <small class="text-muted">15 per page</small>
     </div>
 
     <!-- Filter -->
@@ -147,6 +159,8 @@
             </div>
         </div>
     </div>
+    {{ render_pagination(pagination, 'public_appt.appointment_requests', status=status_filter) }}
+
     {% else %}
     <div class="card">
         <div class="card-body text-center py-5 text-muted">

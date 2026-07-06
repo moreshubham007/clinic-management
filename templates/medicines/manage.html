@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/pagination.html" import render_pagination %}
 
 {% block title %}Manage Medicine Orders{% endblock %}
 {% block header_title %}💊 Medicine Orders{% endblock %}
@@ -21,7 +22,7 @@
                     <div class="card-body py-3">
                         <i class="{{ icon }} fs-3 text-{{ color }} mb-1"></i>
                         <div class="fw-bold fs-4 text-{{ color }}">
-                            {{ orders | selectattr('status', 'eq', s) | list | length }}
+                            {{ status_counts.get(s, 0) }}
                         </div>
                         <small class="text-muted">{{ label }}</small>
                     </div>
@@ -48,6 +49,17 @@
         </div>
     </div>
 
+    <!-- Per-page info -->
+    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+        <small class="text-muted">
+            {% if pagination.total > 0 %}
+                {{ pagination.total }} order{{ 's' if pagination.total != 1 }} total
+                {% if status_filter %} · filtered by <strong>{{ status_filter }}</strong>{% endif %}
+            {% endif %}
+        </small>
+        <small class="text-muted">15 per page</small>
+    </div>
+
     {% if orders %}
     <div class="card">
         <div class="card-body p-0">
@@ -60,9 +72,10 @@
                             <th>Patient ID</th>
                             <th>Duration</th>
                             <th>Delivery</th>
+                            <th>Payment</th>
                             <th>Placed On</th>
                             <th>Status</th>
-                            <th class="text-center">Update Status</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,6 +101,21 @@
                                 {% endif %}
                             {% endif %}
                         </td>
+                        <!-- Payment column -->
+                        <td>
+                            {% if order.payment_status == 'paid' %}
+                                <span class="badge bg-success">Paid</span>
+                                {% if order.payment_amount %}
+                                <br><small class="fw-semibold text-success">₹{{ "%.2f" | format(order.payment_amount | float) }}</small>
+                                {% endif %}
+                                {% if order.payment_mode %}
+                                <br><small class="text-muted">{{ order.payment_mode | title }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Unpaid</span>
+                            {% endif %}
+                        </td>
+
                         <td><small>{{ order.created_at.strftime('%d %b %Y') }}<br>{{ order.created_at.strftime('%I:%M %p') }}</small></td>
                         <td>
                             <span class="badge
@@ -114,6 +142,14 @@
                                         <i class="fas fa-save"></i>
                                     </button>
                                 </form>
+                                <!-- Payment button -->
+                                <button class="btn btn-sm {{ 'btn-success' if order.payment_status == 'paid' else 'btn-outline-success' }}"
+                                        title="{{ 'Payment recorded (locked after Ready)' if order.status in ['ready','delivered','cancelled'] else 'Update Payment' }}"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#payment-{{ order.id }}"
+                                        {{ 'disabled' if order.status in ['ready','delivered','cancelled'] and order.payment_status == 'paid' }}>
+                                    <i class="fas fa-rupee-sign"></i>
+                                </button>
                                 {% if order.delivery_type == 'courier' %}
                                 <button class="btn btn-sm btn-outline-info" title="Add Courier Details"
                                         data-bs-toggle="collapse"
@@ -136,6 +172,65 @@
                         </td>
                     </tr>
                     {% endif %}
+
+                    <!-- Payment details collapse row -->
+                    {% set payment_locked = order.status in ['ready', 'delivered', 'cancelled'] %}
+                    <tr class="collapse" id="payment-{{ order.id }}">
+                        <td colspan="9" class="bg-light py-2 px-4">
+                            {% if payment_locked and order.payment_status == 'paid' %}
+                            <div class="py-1">
+                                <i class="fas fa-lock text-success me-2"></i>
+                                <strong class="text-success">Payment Confirmed — ₹{{ "%.2f" | format(order.payment_amount | float) }}</strong>
+                                <span class="text-muted ms-2">({{ order.payment_mode | title if order.payment_mode else 'N/A' }})</span>
+                                <small class="text-muted ms-2">· Locked once order is Ready/Delivered</small>
+                            </div>
+                            {% else %}
+                            <form method="POST"
+                                  action="{{ url_for('medicines.update_payment', order_id=order.id, status=status_filter) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Payment Status</label>
+                                        <select name="payment_status" class="form-select form-select-sm">
+                                            <option value="unpaid" {{ 'selected' if order.payment_status != 'paid' }}>Unpaid</option>
+                                            <option value="paid"   {{ 'selected' if order.payment_status == 'paid' }}>Paid</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Amount (₹)</label>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                               name="payment_amount" placeholder="0.00"
+                                               value="{{ order.payment_amount if order.payment_amount else '' }}"
+                                               {{ 'readonly' if payment_locked }}>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Payment Mode</label>
+                                        <select name="payment_mode" class="form-select form-select-sm">
+                                            <option value="">— Select —</option>
+                                            {% for mode in ['Cash', 'Online', 'UPI', 'Card', 'NEFT/RTGS'] %}
+                                            <option value="{{ mode }}" {{ 'selected' if order.payment_mode == mode }}>{{ mode }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-sm btn-success w-100"
+                                                {{ 'disabled' if payment_locked }}>
+                                            <i class="fas fa-save me-1"></i>Save
+                                        </button>
+                                    </div>
+                                    {% if payment_locked %}
+                                    <div class="col-12">
+                                        <small class="text-warning">
+                                            <i class="fas fa-lock me-1"></i>
+                                            Amount is locked — order is already <strong>{{ order.status | title }}</strong>.
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
 
                     <!-- Courier details collapse row (only for courier orders) -->
                     {% if order.delivery_type == 'courier' %}
@@ -197,6 +292,8 @@
             </div>
         </div>
     </div>
+    {{ render_pagination(pagination, 'medicines.manage_orders', status=status_filter) }}
+
     {% else %}
     <div class="card">
         <div class="card-body text-center py-5 text-muted">

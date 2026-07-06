@@ -153,13 +153,26 @@ def book_existing_patient():
 @staff_required
 def appointment_requests():
     status_filter = request.args.get('status', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
+
     query = AppointmentRequest.query
     if status_filter:
         query = query.filter_by(status=status_filter)
-    requests_list = query.order_by(AppointmentRequest.created_at.desc()).all()
+
+    status_counts = {
+        s: AppointmentRequest.query.filter_by(status=s).count()
+        for s in ['pending', 'confirmed', 'cancelled']
+    }
+
+    pagination = query.order_by(AppointmentRequest.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     return render_template('public/book_requests.html',
-                           requests=requests_list,
-                           status_filter=status_filter)
+                           requests=pagination.items,
+                           pagination=pagination,
+                           status_filter=status_filter,
+                           status_counts=status_counts)
 
 
 @public_appt_bp.route('/requests/<int:req_id>/confirm', methods=['POST'])
