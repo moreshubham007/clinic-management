@@ -144,10 +144,10 @@
                                 </form>
                                 <!-- Payment button -->
                                 <button class="btn btn-sm {{ 'btn-success' if order.payment_status == 'paid' else 'btn-outline-success' }}"
-                                        title="{{ 'Payment recorded (locked after Ready)' if order.status in ['ready','delivered','cancelled'] else 'Update Payment' }}"
+                                        title="{{ 'Payment locked after Ready state' if order.status in ['ready','delivered','cancelled'] else 'Update Payment' }}"
                                         data-bs-toggle="collapse"
                                         data-bs-target="#payment-{{ order.id }}"
-                                        {{ 'disabled' if order.status in ['ready','delivered','cancelled'] and order.payment_status == 'paid' }}>
+                                        {{ 'disabled' if order.status in ['ready','delivered','cancelled'] }}>
                                     <i class="fas fa-rupee-sign"></i>
                                 </button>
                                 {% if order.delivery_type == 'courier' %}
@@ -164,7 +164,7 @@
                     <!-- Notes / Address row -->
                     {% if order.additional_notes or order.delivery_address %}
                     <tr class="table-light">
-                        <td colspan="8" class="py-1 ps-4">
+                        <td colspan="9" class="py-1 ps-4">
                             <small class="text-muted">
                                 {% if order.delivery_address %}<i class="fas fa-map-marker-alt me-1"></i>{{ order.delivery_address }} &nbsp;{% endif %}
                                 {% if order.additional_notes %}<i class="fas fa-sticky-note me-1"></i>{{ order.additional_notes }}{% endif %}
@@ -235,7 +235,7 @@
                     <!-- Courier details collapse row (only for courier orders) -->
                     {% if order.delivery_type == 'courier' %}
                     <tr class="collapse" id="courier-{{ order.id }}">
-                        <td colspan="8" class="bg-light py-2 px-4">
+                        <td colspan="9" class="bg-light py-2 px-4">
                             <form method="POST"
                                   action="{{ url_for('medicines.update_courier_details', order_id=order.id, status=status_filter) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

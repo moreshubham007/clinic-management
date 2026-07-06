@@ -128,7 +128,6 @@ def manage_orders():
         query = query.filter_by(status=status_filter)
 
     # Counts per status for stats (unfiltered)
-    from sqlalchemy import func
     status_counts = {
         s: MedicineOrder.query.filter_by(status=s).count()
         for s in ['pending', 'processing', 'ready', 'delivered', 'cancelled']
