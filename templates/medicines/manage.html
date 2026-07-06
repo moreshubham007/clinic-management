@@ -179,18 +179,10 @@
                     </tr>
                     {% endif %}
 
-                    <!-- Payment details collapse row -->
-                    {% set payment_locked = order.status in ['ready', 'delivered', 'cancelled'] %}
+                    <!-- Payment details collapse row (only rendered when editable) -->
+                    {% if order.status not in ['ready', 'delivered', 'cancelled'] %}
                     <tr class="collapse" id="payment-{{ order.id }}">
                         <td colspan="9" class="bg-light py-2 px-4">
-                            {% if payment_locked and order.payment_status == 'paid' %}
-                            <div class="py-1">
-                                <i class="fas fa-lock text-success me-2"></i>
-                                <strong class="text-success">Payment Confirmed — ₹{{ "%.2f" | format(order.payment_amount | float) }}</strong>
-                                <span class="text-muted ms-2">({{ order.payment_mode | title if order.payment_mode else 'N/A' }})</span>
-                                <small class="text-muted ms-2">· Locked once order is Ready/Delivered</small>
-                            </div>
-                            {% else %}
                             <form method="POST"
                                   action="{{ url_for('medicines.update_payment', order_id=order.id, status=status_filter) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -206,8 +198,7 @@
                                         <label class="form-label form-label-sm fw-semibold mb-1">Amount (₹)</label>
                                         <input type="number" step="0.01" min="0" class="form-control form-control-sm"
                                                name="payment_amount" placeholder="0.00"
-                                               value="{{ order.payment_amount if order.payment_amount else '' }}"
-                                               {{ 'readonly' if payment_locked }}>
+                                               value="{{ order.payment_amount if order.payment_amount else '' }}">
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm fw-semibold mb-1">Payment Mode</label>
@@ -219,24 +210,15 @@
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <button type="submit" class="btn btn-sm btn-success w-100"
-                                                {{ 'disabled' if payment_locked }}>
+                                        <button type="submit" class="btn btn-sm btn-success w-100">
                                             <i class="fas fa-save me-1"></i>Save
                                         </button>
                                     </div>
-                                    {% if payment_locked %}
-                                    <div class="col-12">
-                                        <small class="text-warning">
-                                            <i class="fas fa-lock me-1"></i>
-                                            Amount is locked — order is already <strong>{{ order.status | title }}</strong>.
-                                        </small>
-                                    </div>
-                                    {% endif %}
                                 </div>
                             </form>
-                            {% endif %}
                         </td>
                     </tr>
+                    {% endif %}
 
                     <!-- Courier details collapse row (only for courier orders) -->
                     {% if order.delivery_type == 'courier' %}

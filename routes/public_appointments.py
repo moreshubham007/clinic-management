@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Doctor, AppointmentRequest
+from models import User, AppointmentRequest
 from datetime import datetime
 from functools import wraps
 
@@ -18,10 +18,8 @@ def staff_required(f):
     return decorated_function
 
 
-def _next_request_number():
-    last = AppointmentRequest.query.order_by(AppointmentRequest.id.desc()).first()
-    n = (last.id + 1) if last else 1
-    return f"APTRQ-{str(n).zfill(5)}"
+def _generate_request_number(req_id):
+    return f"APTRQ-{str(req_id).zfill(5)}"
 
 
 # ── Public scanner / kiosk landing ───────────────────────────────────────────
@@ -60,7 +58,7 @@ def book_new_patient():
                 pass
 
         req = AppointmentRequest(
-            request_number=_next_request_number(),
+            request_number='TEMP',
             patient_type='new',
             mobile_number=mobile,
             patient_name=name,
@@ -72,6 +70,8 @@ def book_new_patient():
             status='pending'
         )
         db.session.add(req)
+        db.session.flush()
+        req.request_number = _generate_request_number(req.id)
         db.session.commit()
 
         return render_template('public/book.html',
@@ -122,10 +122,15 @@ def book_existing_patient():
                 except ValueError:
                     pass
 
+            mobile_for_req = submitted_mobile or (p.mobile_number if p else '')
+            if not mobile_for_req:
+                flash('Mobile number is required.', 'danger')
+                return redirect(url_for('public_appt.book_existing_patient'))
+
             req = AppointmentRequest(
-                request_number=_next_request_number(),
+                request_number='TEMP',
                 patient_type='existing',
-                mobile_number=submitted_mobile or (p.mobile_number if p else ''),
+                mobile_number=mobile_for_req,
                 patient_id=p.id if p else None,
                 patient_number=p.patient_number if p else None,
                 preferred_date=preferred_date,
@@ -134,6 +139,8 @@ def book_existing_patient():
                 status='pending'
             )
             db.session.add(req)
+            db.session.flush()
+            req.request_number = _generate_request_number(req.id)
             db.session.commit()
 
             return render_template('public/book.html',

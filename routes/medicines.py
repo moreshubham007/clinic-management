@@ -18,10 +18,8 @@ def staff_required(f):
     return decorated_function
 
 
-def _next_order_number():
-    last = MedicineOrder.query.order_by(MedicineOrder.id.desc()).first()
-    n = (last.id + 1) if last else 1
-    return f"MED-{str(n).zfill(5)}"
+def _generate_order_number(order_id):
+    return f"MED-{str(order_id).zfill(5)}"
 
 
 # ── Public: place order ──────────────────────────────────────────────────────
@@ -63,7 +61,7 @@ def order_medicine():
                 pass
 
         order = MedicineOrder(
-            order_number=_next_order_number(),
+            order_number='TEMP',
             mobile_number=mobile,
             patient_id=patient.id if patient else None,
             patient_number=patient_number or (patient.patient_number if patient else None),
@@ -75,6 +73,8 @@ def order_medicine():
             status='pending'
         )
         db.session.add(order)
+        db.session.flush()  # get auto-incremented id before commit
+        order.order_number = _generate_order_number(order.id)
         db.session.commit()
 
         flash(f'Order placed! Your Order ID is {order.order_number} — save it to track your order.', 'success')
