@@ -150,7 +150,9 @@ def update_order_status(order_id):
     order = MedicineOrder.query.get_or_404(order_id)
     new_status = request.form.get('status')
     valid_statuses = ['pending', 'processing', 'ready', 'delivered', 'cancelled']
-    if new_status in valid_statuses:
+    if order.status == 'delivered':
+        flash(f'Order {order.order_number} is already Delivered and cannot be changed.', 'warning')
+    elif new_status in valid_statuses:
         order.status = new_status
         order.updated_at = datetime.now()
         db.session.commit()

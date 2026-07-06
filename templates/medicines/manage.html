@@ -129,6 +129,11 @@
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-1 align-items-center justify-content-center">
+                                {% if order.status == 'delivered' %}
+                                <span class="badge bg-primary px-2 py-2" title="Delivered — status is final">
+                                    <i class="fas fa-lock me-1"></i>Delivered
+                                </span>
+                                {% else %}
                                 <form method="POST"
                                       action="{{ url_for('medicines.update_order_status', order_id=order.id, status=status_filter) }}"
                                       class="d-inline-flex gap-1 align-items-center">
@@ -142,6 +147,7 @@
                                         <i class="fas fa-save"></i>
                                     </button>
                                 </form>
+                                {% endif %}
                                 <!-- Payment button -->
                                 <button class="btn btn-sm {{ 'btn-success' if order.payment_status == 'paid' else 'btn-outline-success' }}"
                                         title="{{ 'Payment locked after Ready state' if order.status in ['ready','delivered','cancelled'] else 'Update Payment' }}"
