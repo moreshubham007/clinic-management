@@ -9,32 +9,54 @@
     <!-- Search and Filter Section -->
     <div class="card mb-4">
         <div class="card-body">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text bg-purple-100 border-0">
-                            <i class="fas fa-search text-purple-600"></i>
-                        </span>
-                        <input type="text" id="patientSearch" class="form-control border-0 bg-purple-50" 
-                               placeholder="Search patients by name or email...">
+            <form method="GET" action="{{ url_for('doctor.my_patients') }}" id="searchForm">
+                <div class="row align-items-end g-2">
+                    <div class="col-md-7">
+                        <label class="form-label fw-semibold small text-muted mb-1">Search Patients</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-purple-100 border-0">
+                                <i class="fas fa-search text-purple-600"></i>
+                            </span>
+                            <input type="text" name="search" id="searchInput"
+                                   class="form-control border-0 bg-purple-50"
+                                   placeholder="Search by name, email or patient ID..."
+                                   value="{{ search }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small text-muted mb-1">Filter</label>
+                        <select name="active_only" class="form-select border-0 bg-purple-50"
+                                onchange="this.form.submit()">
+                            <option value="" {% if not active_only %}selected{% endif %}>All Patients</option>
+                            <option value="1" {% if active_only %}selected{% endif %}>Active Cases Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-purple w-100"
+                                style="background:var(--purple-600);border-color:var(--purple-600);color:white;">
+                            <i class="fas fa-filter me-1"></i>Apply
+                        </button>
                     </div>
                 </div>
-                <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                    <button class="btn btn-outline-secondary me-2" onclick="filterPatients('all')">
-                        All Patients
-                    </button>
-                    <button class="btn btn-outline-primary" onclick="filterPatients('active')">
-                        Active Cases Only
-                    </button>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
 
     <!-- Patients List -->
     <div class="card">
-        <div class="card-header" style="background: linear-gradient(45deg, var(--purple-600), var(--purple-700));">
-            <h5 class="card-title mb-0 text-white">Patient List</h5>
+        <div class="card-header d-flex justify-content-between align-items-center"
+             style="background: linear-gradient(45deg, var(--purple-600), var(--purple-700));">
+            <h5 class="card-title mb-0 text-white">
+                Patient List
+                <span class="badge bg-white text-purple-700 ms-2" style="font-size:0.75rem;">
+                    {{ pagination.total }} total
+                </span>
+            </h5>
+            {% if search or active_only %}
+            <a href="{{ url_for('doctor.my_patients') }}" class="btn btn-sm btn-light">
+                <i class="fas fa-times me-1"></i>Clear Filters
+            </a>
+            {% endif %}
         </div>
         <div class="card-body p-0">
             {% if patients %}
@@ -45,7 +67,7 @@
                             <th class="bg-purple-50">Patient Name</th>
                             <th class="bg-purple-50">Patient ID</th>
                             <th class="bg-purple-50">Email</th>
-                            <th class="bg-purple-50">Total Appointments</th>
+                            <th class="bg-purple-50">Total Appts</th>
                             <th class="bg-purple-50">Total Cases</th>
                             <th class="bg-purple-50">Active Cases</th>
                             <th class="bg-purple-50">Last Visit</th>
@@ -54,7 +76,7 @@
                     </thead>
                     <tbody>
                         {% for patient in patients %}
-                        <tr class="patient-row" data-active-cases="{{ patient_stats[patient.id]['active_cases'] }}">
+                        <tr>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-circle bg-purple-100 text-purple-600 me-2">
@@ -63,7 +85,7 @@
                                     {{ patient.name }}
                                 </div>
                             </td>
-                            <td>{{ patient.patient_number or 'Not assigned' }}</td>
+                            <td>{{ patient.patient_number or '—' }}</td>
                             <td>{{ patient.email }}</td>
                             <td>{{ patient_stats[patient.id]['total_appointments'] }}</td>
                             <td>{{ patient_stats[patient.id]['total_cases'] }}</td>
@@ -73,7 +95,7 @@
                                     {{ patient_stats[patient.id]['active_cases'] }} Active
                                 </span>
                                 {% else %}
-                                <span class="badge bg-secondary">No Active Cases</span>
+                                <span class="badge bg-secondary">None</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -85,17 +107,17 @@
                             </td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{{ url_for('patient.view_history', patient_id=patient.id) }}" 
+                                    <a href="{{ url_for('patient.view_history', patient_id=patient.id) }}"
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-history"></i> History
                                     </a>
-                                    <a href="{{ url_for('appointments.create_appointment') }}?patient_id={{ patient.id }}" 
+                                    <a href="{{ url_for('appointments.create_appointment') }}?patient_id={{ patient.id }}"
                                        class="btn btn-sm btn-outline-success">
-                                        <i class="fas fa-calendar-plus"></i> New Appointment
+                                        <i class="fas fa-calendar-plus"></i> Appt
                                     </a>
-                                    <a href="{{ url_for('cases.create_case_without_appointment') }}?patient_id={{ patient.id }}" 
+                                    <a href="{{ url_for('cases.create_case_without_appointment') }}?patient_id={{ patient.id }}"
                                        class="btn btn-sm btn-outline-info">
-                                        <i class="fas fa-file-medical"></i> New Case
+                                        <i class="fas fa-file-medical"></i> Case
                                     </a>
                                 </div>
                             </td>
@@ -104,13 +126,93 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+            <div class="card-footer d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <small class="text-muted">
+                    Showing <strong>{{ (pagination.page - 1) * pagination.per_page + 1 }}</strong>–<strong>{{ [pagination.page * pagination.per_page, pagination.total] | min }}</strong>
+                    of <strong>{{ pagination.total }}</strong> patients
+                </small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1" style="flex-wrap:wrap;">
+
+                        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                            <a class="page-link rounded-3"
+                               href="{{ url_for('doctor.my_patients', page=pagination.prev_num, search=search, active_only=active_only) if pagination.has_prev else '#' }}"
+                               style="border:none;background:{{ 'var(--purple-100)' if pagination.has_prev else '#f1f1f1' }};color:{{ 'var(--purple-700)' if pagination.has_prev else '#aaa' }};">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+
+                        {% set ns = namespace(start=pagination.page - 2, end=pagination.page + 2) %}
+                        {% if ns.start < 1 %}{% set ns.start = 1 %}{% endif %}
+                        {% if ns.end > pagination.pages %}{% set ns.end = pagination.pages %}{% endif %}
+
+                        {% if ns.start > 1 %}
+                        <li class="page-item">
+                            <a class="page-link rounded-3"
+                               href="{{ url_for('doctor.my_patients', page=1, search=search, active_only=active_only) }}"
+                               style="border:none;background:var(--purple-100);color:var(--purple-700);">1</a>
+                        </li>
+                        {% if ns.start > 2 %}
+                        <li class="page-item disabled">
+                            <span class="page-link" style="border:none;background:transparent;">…</span>
+                        </li>
+                        {% endif %}
+                        {% endif %}
+
+                        {% for p in range(ns.start, ns.end + 1) %}
+                        <li class="page-item {{ 'active' if p == pagination.page }}">
+                            <a class="page-link rounded-3"
+                               href="{{ url_for('doctor.my_patients', page=p, search=search, active_only=active_only) }}"
+                               style="border:none;{% if p == pagination.page %}background:linear-gradient(135deg,var(--purple-600),var(--purple-700));color:white;{% else %}background:var(--purple-100);color:var(--purple-700);{% endif %}">
+                                {{ p }}
+                            </a>
+                        </li>
+                        {% endfor %}
+
+                        {% if ns.end < pagination.pages %}
+                        {% if ns.end < pagination.pages - 1 %}
+                        <li class="page-item disabled">
+                            <span class="page-link" style="border:none;background:transparent;">…</span>
+                        </li>
+                        {% endif %}
+                        <li class="page-item">
+                            <a class="page-link rounded-3"
+                               href="{{ url_for('doctor.my_patients', page=pagination.pages, search=search, active_only=active_only) }}"
+                               style="border:none;background:var(--purple-100);color:var(--purple-700);">{{ pagination.pages }}</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                            <a class="page-link rounded-3"
+                               href="{{ url_for('doctor.my_patients', page=pagination.next_num, search=search, active_only=active_only) if pagination.has_next else '#' }}"
+                               style="border:none;background:{{ 'var(--purple-100)' if pagination.has_next else '#f1f1f1' }};color:{{ 'var(--purple-700)' if pagination.has_next else '#aaa' }};">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% else %}
+            <div class="card-footer text-muted small">
+                {{ pagination.total }} patient{% if pagination.total != 1 %}s{% endif %} found
+            </div>
+            {% endif %}
+
             {% else %}
             <div class="text-center py-5">
                 <div class="mb-3">
                     <i class="fas fa-user-friends fa-3x text-muted"></i>
                 </div>
+                {% if search or active_only %}
+                <h5 class="text-muted">No patients match your filters</h5>
+                <a href="{{ url_for('doctor.my_patients') }}" class="btn btn-outline-secondary mt-2">Clear Filters</a>
+                {% else %}
                 <h5 class="text-muted">No patients found</h5>
                 <p class="text-muted mb-0">You haven't treated any patients yet.</p>
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -127,51 +229,16 @@
     justify-content: center;
     font-weight: 600;
     font-size: 0.875rem;
+    flex-shrink: 0;
 }
 
 .btn-group .btn {
     padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
 }
 
 .table td {
     vertical-align: middle;
 }
-
-.badge {
-    font-weight: 500;
-}
 </style>
-
-{% block extra_js %}
-<script>
-document.getElementById('patientSearch').addEventListener('input', function(e) {
-    const searchText = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('#patientsTable tbody tr');
-    
-    rows.forEach(row => {
-        const name = row.querySelector('td:first-child').textContent.toLowerCase();
-        const email = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
-        
-        if (name.includes(searchText) || email.includes(searchText)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-});
-
-function filterPatients(filter) {
-    const rows = document.querySelectorAll('.patient-row');
-    rows.forEach(row => {
-        if (filter === 'all') {
-            row.style.display = '';
-        } else if (filter === 'active') {
-            const activeCases = parseInt(row.dataset.activeCases);
-            row.style.display = activeCases > 0 ? '' : 'none';
-        }
-    });
-}
-</script>
 {% endblock %}
-{% endblock %} 

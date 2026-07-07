@@ -55,28 +55,35 @@ def doctor_dashboard():
         answer=None
     ).order_by(Question.created_at.desc()).all()
     
-    # Get all patients who have had appointments or cases with this doctor
-    patients = User.query.join(Appointment, User.id == Appointment.patient_id)\
+    # Get recent patients (last 10) — full list available at /doctor/my-patients
+    recent_patients = User.query\
         .filter(
             User.role == 'patient',
-            Appointment.doctor_id == current_user.doctor.id
-        )\
-        .union(
-            User.query.join(Case, User.id == Case.patient_id)\
-            .filter(
-                User.role == 'patient',
-                Case.doctor_id == current_user.doctor.id
+            db.or_(
+                User.appointments.any(Appointment.doctor_id == current_user.doctor.id),
+                User.cases.any(Case.doctor_id == current_user.doctor.id)
             )
         )\
         .order_by(User.name)\
+        .limit(10)\
         .all()
-    
+
+    total_patients = User.query\
+        .filter(
+            User.role == 'patient',
+            db.or_(
+                User.appointments.any(Appointment.doctor_id == current_user.doctor.id),
+                User.cases.any(Case.doctor_id == current_user.doctor.id)
+            )
+        ).count()
+
     return render_template('dashboard/doctor_dashboard.html',
                          today_appointments=today_appointments,
                          upcoming_appointments=upcoming_appointments,
                          recent_cases=recent_cases,
                          unanswered_questions=unanswered_questions,
-                         patients=patients)
+                         patients=recent_patients,
+                         total_patients=total_patients)
 
 @dashboard_bp.route('/patient/dashboard')
 @login_required
