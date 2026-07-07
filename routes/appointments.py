@@ -72,12 +72,18 @@ def list_appointments():
     
     # Get all active doctors for the filter dropdown
     doctors = Doctor.query.join(User).filter(User.is_active == True).all()
-    
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
     # Order by datetime in descending order (newest first)
-    appointments = query.order_by(Appointment.datetime.desc()).all()
-    
-    return render_template('appointments/list.html', 
-                         appointments=appointments,
+    pagination = query.order_by(Appointment.datetime.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    return render_template('appointments/list.html',
+                         appointments=pagination.items,
+                         pagination=pagination,
                          doctors=doctors)
 
 @appointments_bp.route('/create', methods=['GET', 'POST'])
