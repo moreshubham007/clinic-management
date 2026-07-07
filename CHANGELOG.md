@@ -2,6 +2,47 @@
 
 ---
 
+## Version 2.5.0 — Jul 7, 2026
+
+### 💊 Medicine Orders — Payment Tracking
+- Added **Payment Status** (`unpaid` / `paid`) and **Payment Amount** (₹) to every medicine order
+- Added **Payment Mode** field: Cash, Online, UPI, Card, NEFT/RTGS
+- Receptionist can set payment via an inline ₹ panel on the manage page
+- **Payment is locked** once the order reaches `Ready`, `Delivered`, or `Cancelled` — amount cannot be changed
+- Customers see a **payment card** on the tracking/status page once order is Ready or Delivered (green if paid, amber if unpaid with clinic-pay prompt)
+
+### 💊 Medicine Orders — Status Rules
+- Orders marked as **Delivered** are now permanently locked — status cannot be reverted to any previous state
+- Backend enforces the lock server-side (not just UI)
+- UI shows a `🔒 Delivered` badge in place of the status dropdown for delivered orders
+
+### 📄 Appointments — Pagination
+- Appointments list now shows **20 per page** (previously loaded all records)
+- All active filters (status, date, doctor, patient type, priority) are preserved across page navigation
+- Record count shown: "Showing X–Y of Z appointments"
+
+### 🏥 Public Landing — `/public_scanner`
+- New kiosk-style landing page to choose between Book Appointment, Order Medicines, and Track Order
+- Three large tap-friendly cards, green leaf theme, mobile/tablet/kiosk optimised
+
+### 🐛 Bug Fixes
+- **Race condition** in order/request number generation — replaced sequential ID lookup with `flush()`-then-assign pattern; DB auto-increment guarantees unique IDs even under concurrent requests
+- **Empty mobile guard** — existing-patient appointment submit path now validates mobile before saving
+- **Dead payment collapse panel** removed for locked orders (Ready/Delivered/Cancelled) — no orphaned DOM
+- **`colspan` mismatch** in medicine manage table fixed (8 → 9 after Payment column added)
+- **Unused `Doctor` import** removed from `public_appointments.py`
+- **Unused `func` import** removed from `routes/medicines.py`
+
+### 🗄️ Database
+- Added `payment_status`, `payment_amount`, `payment_mode` columns to `medicine_order` table
+- Added `migration_v261.sql` — upgrade script for version-8 → version-26.1 (safe, idempotent)
+- Added `schema_v261_full.sql` — complete fresh-deployment schema for all 12 tables
+
+### 📦 Dependencies
+- Upgraded `Flask-Migrate` from `4.0.5` → `4.0.7` in `requirements-linux.txt`
+
+---
+
 ## Version 2.4.0 — Jul 4, 2026
 
 ### 🆕 New Modules
@@ -349,7 +390,14 @@ DELETE /appointments/{id} - Delete appointment (admin/receptionist only)
 
 ## Version History
 
-### v2.4.1 (Current) — Jul 4, 2026
+### v2.5.0 (Current) — Jul 7, 2026
+- Payment tracking (status, amount, mode) on medicine orders with lock-after-Ready rule
+- Delivered status permanently locked — no revert
+- Appointments list pagination (20/page, filters preserved)
+- Race-condition-safe order/request number generation
+- Production migration scripts (`migration_v261.sql`, `schema_v261_full.sql`)
+
+### v2.4.1 — Jul 4, 2026
 - Public Scanner/Kiosk landing page at /public_scanner
 - Three-option card layout for appointment booking, medicine orders, and order tracking
 
@@ -385,4 +433,4 @@ DELETE /appointments/{id} - Delete appointment (admin/receptionist only)
 
 ---
 
-*Last Updated: December 2024* 
+*Last Updated: July 7, 2026*
