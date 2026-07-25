@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, MedicineOrder
@@ -112,6 +112,111 @@ def track_medicine():
 def track_order(order_number):
     order = MedicineOrder.query.filter_by(order_number=order_number).first_or_404()
     return render_template('medicines/status.html', order=order)
+
+
+# ── Staff: patient lookup (AJAX) ─────────────────────────────────────────────
+@medicines_bp.route('/manage/patient-lookup')
+@login_required
+@staff_required
+def patient_lookup():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    patients = User.query.filter(
+        User.role == 'patient',
+        db.or_(
+            User.name.ilike(f'%{q}%'),
+            User.patient_number.ilike(f'%{q}%'),
+            User.mobile_number.ilike(f'%{q}%')
+        )
+    ).limit(10).all()
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'patient_number': p.patient_number or '',
+        'mobile_number': p.mobile_number or '',
+        'email': p.email or ''
+    } for p in patients])
+
+
+# ── Staff: create order on behalf of patient ──────────────────────────────────
+@medicines_bp.route('/manage/create', methods=['GET', 'POST'])
+@login_required
+@staff_required
+def create_order():
+    if request.method == 'POST':
+        mobile = request.form.get('mobile_number', '').strip()
+        patient_number = request.form.get('patient_number', '').strip()
+        patient_id_raw = request.form.get('patient_id', '').strip()
+        duration = request.form.get('duration_days')
+        delivery_type = request.form.get('delivery_type')
+        pickup_date_str = request.form.get('pickup_date', '').strip()
+        delivery_address = request.form.get('delivery_address', '').strip()
+        notes = request.form.get('additional_notes', '').strip()
+        payment_status = request.form.get('payment_status', 'unpaid')
+        amount_str = request.form.get('payment_amount', '').strip()
+        payment_mode = request.form.get('payment_mode', '').strip() or None
+
+        if not mobile or not duration or not delivery_type:
+            flash('Mobile number, duration, and delivery type are required.', 'danger')
+            return redirect(url_for('medicines.create_order'))
+
+        if delivery_type == 'self_pickup' and not pickup_date_str:
+            flash('Please select a preferred pickup date.', 'danger')
+            return redirect(url_for('medicines.create_order'))
+
+        if delivery_type == 'courier' and not delivery_address:
+            flash('Please provide a delivery address for courier delivery.', 'danger')
+            return redirect(url_for('medicines.create_order'))
+
+        # Resolve linked patient
+        patient = None
+        if patient_id_raw:
+            patient = User.query.get(int(patient_id_raw))
+        if not patient and patient_number:
+            patient = User.query.filter_by(patient_number=patient_number, role='patient').first()
+        if not patient and mobile:
+            patient = User.query.filter_by(mobile_number=mobile, role='patient').first()
+
+        pickup_date = None
+        if pickup_date_str:
+            try:
+                pickup_date = datetime.strptime(pickup_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+
+        payment_amount = None
+        if amount_str:
+            try:
+                payment_amount = float(amount_str)
+            except ValueError:
+                flash('Invalid payment amount.', 'danger')
+                return redirect(url_for('medicines.create_order'))
+
+        order = MedicineOrder(
+            order_number='TEMP',
+            mobile_number=mobile,
+            patient_id=patient.id if patient else None,
+            patient_number=patient_number or (patient.patient_number if patient else None),
+            duration_days=int(duration),
+            delivery_type=delivery_type,
+            pickup_date=pickup_date,
+            delivery_address=delivery_address if delivery_type == 'courier' else None,
+            additional_notes=notes,
+            status='pending',
+            payment_status=payment_status,
+            payment_amount=payment_amount,
+            payment_mode=payment_mode if payment_status == 'paid' else None
+        )
+        db.session.add(order)
+        db.session.flush()
+        order.order_number = _generate_order_number(order.id)
+        db.session.commit()
+
+        flash(f'Order {order.order_number} created successfully.', 'success')
+        return redirect(url_for('medicines.manage_orders'))
+
+    return render_template('medicines/create_order.html')
 
 
 # ── Staff: list & manage orders ──────────────────────────────────────────────

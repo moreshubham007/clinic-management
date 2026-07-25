@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Create Medicine Order{% endblock %}
+{% block header_title %}💊 Create Medicine Order{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+<div class="row justify-content-center">
+<div class="col-lg-8 col-xl-7">
+
+    <div class="d-flex align-items-center mb-4 gap-2">
+        <a href="{{ url_for('medicines.manage_orders') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to Orders
+        </a>
+        <h5 class="mb-0 ms-2 fw-semibold">New Medicine Order (Staff)</h5>
+    </div>
+
+    <form method="POST" action="{{ url_for('medicines.create_order') }}" id="createOrderForm">
+
+        <!-- ── Patient Lookup ───────────────────────────────────────────── -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">
+                <i class="fas fa-user-search me-2 text-primary"></i>Patient Lookup <span class="text-muted fw-normal small">(optional — search by name, patient ID, or mobile)</span>
+            </div>
+            <div class="card-body">
+                <!-- Autocomplete search box -->
+                <div class="mb-3 position-relative">
+                    <label class="form-label">Search Patient</label>
+                    <input type="text" id="patientSearch" class="form-control"
+                           placeholder="Type name, patient ID or mobile..."
+                           autocomplete="off">
+                    <div id="patientSuggestions"
+                         class="list-group position-absolute w-100 shadow z-3"
+                         style="top:100%;display:none;max-height:220px;overflow-y:auto;z-index:1000;"></div>
+                </div>
+
+                <!-- Hidden fields filled on selection -->
+                <input type="hidden" name="patient_id" id="patientIdField">
+
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" name="mobile_number" id="mobileField" class="form-control"
+                               placeholder="10-digit mobile" maxlength="15" required>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label">Patient ID</label>
+                        <input type="text" name="patient_number" id="patientNumberField" class="form-control"
+                               placeholder="e.g. P-00012">
+                    </div>
+                </div>
+
+                <!-- Selected patient badge -->
+                <div id="selectedPatientBadge" class="mt-3 d-none">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                        <i class="fas fa-check-circle me-1"></i>
+                        <span id="selectedPatientName"></span>
+                        <button type="button" class="btn-close btn-close-sm ms-2" id="clearPatient"
+                                style="font-size:0.65rem;"></button>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Order Details ────────────────────────────────────────────── -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">
+                <i class="fas fa-pills me-2 text-success"></i>Order Details
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Duration -->
+                    <div class="col-sm-6">
+                        <label class="form-label">Medicine Duration <span class="text-danger">*</span></label>
+                        <select name="duration_days" class="form-select" required>
+                            <option value="" disabled selected>Select duration</option>
+                            <option value="15">15 Days</option>
+                            <option value="30">30 Days</option>
+                            <option value="45">45 Days</option>
+                            <option value="60">60 Days</option>
+                            <option value="90">90 Days</option>
+                        </select>
+                    </div>
+
+                    <!-- Delivery Type -->
+                    <div class="col-sm-6">
+                        <label class="form-label">Delivery Type <span class="text-danger">*</span></label>
+                        <select name="delivery_type" id="deliveryType" class="form-select" required
+                                onchange="toggleDeliveryFields()">
+                            <option value="" disabled selected>Select type</option>
+                            <option value="self_pickup">Self Pickup</option>
+                            <option value="courier">Courier / Delivery</option>
+                        </select>
+                    </div>
+
+                    <!-- Pickup date (self_pickup) -->
+                    <div class="col-sm-6" id="pickupDateGroup" style="display:none;">
+                        <label class="form-label">Preferred Pickup Date <span class="text-danger">*</span></label>
+                        <input type="date" name="pickup_date" id="pickupDate" class="form-control">
+                    </div>
+
+                    <!-- Delivery address (courier) -->
+                    <div class="col-12" id="deliveryAddressGroup" style="display:none;">
+                        <label class="form-label">Delivery Address <span class="text-danger">*</span></label>
+                        <textarea name="delivery_address" id="deliveryAddress" class="form-control" rows="2"
+                                  placeholder="Full delivery address"></textarea>
+                    </div>
+
+                    <!-- Additional notes -->
+                    <div class="col-12">
+                        <label class="form-label">Additional Notes</label>
+                        <textarea name="additional_notes" class="form-control" rows="2"
+                                  placeholder="e.g. specific medicines required, allergies, etc."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Payment Details ──────────────────────────────────────────── -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">
+                <i class="fas fa-rupee-sign me-2 text-warning"></i>Payment Details <span class="text-muted fw-normal small">(optional)</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-4">
+                        <label class="form-label">Payment Status</label>
+                        <select name="payment_status" id="paymentStatus" class="form-select"
+                                onchange="togglePaymentFields()">
+                            <option value="unpaid" selected>Unpaid</option>
+                            <option value="paid">Paid</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4" id="paymentAmountGroup" style="display:none;">
+                        <label class="form-label">Amount (₹)</label>
+                        <input type="number" name="payment_amount" class="form-control"
+                               placeholder="0.00" min="0" step="0.01">
+                    </div>
+                    <div class="col-sm-4" id="paymentModeGroup" style="display:none;">
+                        <label class="form-label">Payment Mode</label>
+                        <select name="payment_mode" class="form-select">
+                            <option value="">— Select —</option>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="online">Online / Card</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Submit ───────────────────────────────────────────────────── -->
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <a href="{{ url_for('medicines.manage_orders') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success px-4">
+                <i class="fas fa-plus-circle me-1"></i>Create Order
+            </button>
+        </div>
+
+    </form>
+
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Set min date for pickup to today
+document.getElementById('pickupDate').min = new Date().toISOString().split('T')[0];
+
+// ── Delivery type toggle ────────────────────────────────────────────────────
+function toggleDeliveryFields() {
+    const type = document.getElementById('deliveryType').value;
+    const pickupGroup   = document.getElementById('pickupDateGroup');
+    const addressGroup  = document.getElementById('deliveryAddressGroup');
+    const pickupInput   = document.getElementById('pickupDate');
+    const addressInput  = document.getElementById('deliveryAddress');
+
+    if (type === 'self_pickup') {
+        pickupGroup.style.display  = '';
+        addressGroup.style.display = 'none';
+        pickupInput.required       = true;
+        addressInput.required      = false;
+    } else if (type === 'courier') {
+        pickupGroup.style.display  = 'none';
+        addressGroup.style.display = '';
+        pickupInput.required       = false;
+        addressInput.required      = true;
+    } else {
+        pickupGroup.style.display  = 'none';
+        addressGroup.style.display = 'none';
+        pickupInput.required       = false;
+        addressInput.required      = false;
+    }
+}
+
+// ── Payment toggle ──────────────────────────────────────────────────────────
+function togglePaymentFields() {
+    const paid = document.getElementById('paymentStatus').value === 'paid';
+    document.getElementById('paymentAmountGroup').style.display = paid ? '' : 'none';
+    document.getElementById('paymentModeGroup').style.display   = paid ? '' : 'none';
+}
+
+// ── Patient autocomplete ────────────────────────────────────────────────────
+let searchTimer;
+const searchInput      = document.getElementById('patientSearch');
+const suggestionsBox   = document.getElementById('patientSuggestions');
+const patientIdField   = document.getElementById('patientIdField');
+const mobileField      = document.getElementById('mobileField');
+const patientNumField  = document.getElementById('patientNumberField');
+const badge            = document.getElementById('selectedPatientBadge');
+const badgeName        = document.getElementById('selectedPatientName');
+
+searchInput.addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    const q = this.value.trim();
+    if (q.length < 2) { suggestionsBox.style.display = 'none'; return; }
+    searchTimer = setTimeout(() => fetchPatients(q), 300);
+});
+
+function fetchPatients(q) {
+    fetch(`{{ url_for('medicines.patient_lookup') }}?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(data => {
+            suggestionsBox.innerHTML = '';
+            if (!data.length) { suggestionsBox.style.display = 'none'; return; }
+            data.forEach(p => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action py-2';
+                item.innerHTML = `<strong>${p.name}</strong>
+                    <span class="badge bg-secondary ms-1">${p.patient_number || '—'}</span>
+                    <small class="text-muted ms-2">${p.mobile_number}</small>`;
+                item.addEventListener('click', () => selectPatient(p));
+                suggestionsBox.appendChild(item);
+            });
+            suggestionsBox.style.display = 'block';
+        });
+}
+
+function selectPatient(p) {
+    patientIdField.value   = p.id;
+    mobileField.value      = p.mobile_number;
+    patientNumField.value  = p.patient_number;
+    searchInput.value      = p.name;
+    badgeName.textContent  = `${p.name}  (${p.patient_number || p.mobile_number})`;
+    badge.classList.remove('d-none');
+    suggestionsBox.style.display = 'none';
+}
+
+document.getElementById('clearPatient').addEventListener('click', function () {
+    patientIdField.value  = '';
+    mobileField.value     = '';
+    patientNumField.value = '';
+    searchInput.value     = '';
+    badge.classList.add('d-none');
+});
+
+// Close suggestions when clicking outside
+document.addEventListener('click', function (e) {
+    if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+        suggestionsBox.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
