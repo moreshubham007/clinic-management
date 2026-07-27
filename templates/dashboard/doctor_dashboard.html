@@ -567,8 +567,8 @@
 .bg-teal-100    {background:#ccfbf1!important;} .text-teal-700  {color:#0f766e!important;}
 </style>
 
+{% endblock %}{# end block content #}
 
-{# ══ JavaScript ═══════════════════════════════════════════════════════════════ #}
 {% block extra_js %}
 <script>
 /* ── mark appointment completed ─────────────────────────────────────────── */
@@ -639,5 +639,4 @@ document.addEventListener('DOMContentLoaded', function () {
     setInterval(refreshBoard, 30000);
 });
 </script>
-{% endblock %}
-{% endblock %}
+{% endblock %}{# end block extra_js #}
