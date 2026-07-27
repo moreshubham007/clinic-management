@@ -160,6 +160,9 @@ def create_case(appointment_id):
             # Update the appointment with the case_id and mark it as completed
             appointment.case_id = case.id
             appointment.status = 'completed'
+
+            from routes.waiting_area import sync_waiting_on_complete
+            sync_waiting_on_complete(appointment, actor_user_id=current_user.id)
             
             db.session.commit()
             

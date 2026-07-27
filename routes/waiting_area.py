@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Appointment, Doctor, WaitingArea
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, time, timedelta
 from functools import wraps
 
 waiting_area_bp = Blueprint('waiting_area', __name__)
@@ -20,28 +20,94 @@ def role_required(allowed_roles):
         return decorated_function
     return decorator
 
+
+def today_range():
+    """Return (start, end) datetimes covering the current local calendar day."""
+    start = datetime.combine(date.today(), time.min)
+    return start, start + timedelta(days=1)
+
+
+def todays_waiting_query(doctor_id=None):
+    """
+    Waiting-area entries for appointments scheduled today only.
+    Filtering by appointment.datetime (not check_in_time) keeps the board
+    aligned with Today's Appointments and avoids stale/previous-day rows.
+    """
+    start, end = today_range()
+    q = WaitingArea.query.join(
+        Appointment, WaitingArea.appointment_id == Appointment.id
+    ).filter(
+        Appointment.datetime >= start,
+        Appointment.datetime < end,
+    )
+    if doctor_id is not None:
+        q = q.filter(WaitingArea.doctor_id == doctor_id)
+    return q
+
+
+def sync_waiting_on_complete(appointment, actor_user_id=None):
+    """
+    Keep waiting-area board in sync when an appointment is marked completed
+    (from dashboard, edit form, case creation, etc.).
+    Updates an existing entry, or creates a completed entry for today.
+    Does NOT commit — caller owns the transaction.
+    """
+    now = datetime.now()
+    waiting_entry = WaitingArea.query.filter_by(
+        appointment_id=appointment.id
+    ).first()
+
+    if waiting_entry:
+        if waiting_entry.status != 'completed':
+            waiting_entry.status = 'completed'
+            waiting_entry.completion_time = now
+            waiting_entry.updated_at = now
+            if not waiting_entry.actual_start_time:
+                waiting_entry.actual_start_time = now
+        return waiting_entry
+
+    if not appointment.doctor_id:
+        return None
+
+    new_entry = WaitingArea(
+        appointment_id=appointment.id,
+        patient_id=appointment.patient_id,
+        doctor_id=appointment.doctor_id,
+        expected_appointment_time=appointment.datetime,
+        check_in_time=now,
+        actual_start_time=now,
+        completion_time=now,
+        status='completed',
+        priority=appointment.priority or 'normal',
+        added_by_id=actor_user_id,
+    )
+    db.session.add(new_entry)
+    return new_entry
+
+
 def cleanup_completed_appointments():
-    """Automatically remove waiting area entries for completed appointments"""
+    """Sync waiting-area status when the linked appointment is already completed."""
     try:
-        # Find waiting area entries where the associated appointment is completed
         completed_waiting_entries = WaitingArea.query.join(Appointment).filter(
             Appointment.status == 'completed',
             WaitingArea.status.in_(['waiting', 'in_progress'])
         ).all()
-        
+
         removed_count = 0
+        now = datetime.now()
         for entry in completed_waiting_entries:
-            # Update the waiting area entry status to completed if not already
             if entry.status != 'completed':
                 entry.status = 'completed'
-                entry.completion_time = datetime.now()
-                entry.updated_at = datetime.now()
+                entry.completion_time = now
+                entry.updated_at = now
+                if not entry.actual_start_time:
+                    entry.actual_start_time = now
                 removed_count += 1
-        
+
         if removed_count > 0:
             db.session.commit()
             print(f"Automatically updated {removed_count} waiting area entries for completed appointments")
-        
+
         return removed_count
     except Exception as e:
         print(f"Error cleaning up completed appointments: {e}")
@@ -53,30 +119,25 @@ def cleanup_completed_appointments():
 @role_required(['receptionist', 'admin'])
 def receptionist_waiting_area():
     """Receptionist view of waiting area"""
-    # Clean up completed appointments first
     cleanup_completed_appointments()
-    
-    today = date.today()
-    
-    # Get today's scheduled appointments that can be added to waiting area
+
+    start, end = today_range()
+
+    # Today's scheduled appointments that can be added to waiting area
     scheduled_appointments = Appointment.query.filter(
-        Appointment.datetime >= today,
-        Appointment.datetime < today + timedelta(days=1),
+        Appointment.datetime >= start,
+        Appointment.datetime < end,
         Appointment.status == 'scheduled'
     ).join(Doctor).join(User, Doctor.user_id == User.id).all()
-    
-    # Get all today's waiting area entries (active + completed today)
-    waiting_entries = WaitingArea.query.filter(
-        WaitingArea.check_in_time >= today,
-        WaitingArea.check_in_time < today + timedelta(days=1)
-    ).join(Appointment).join(Doctor).join(User, Doctor.user_id == User.id).order_by(
+
+    # Today's waiting area entries (active + completed) — appointment date = today
+    waiting_entries = todays_waiting_query().order_by(
         WaitingArea.check_in_time.asc()
     ).all()
-    
-    # Get doctors for filtering
+
     doctors = Doctor.query.join(User).filter(User.role == 'doctor').all()
-    
-    return render_template('waiting_area/receptionist.html', 
+
+    return render_template('waiting_area/receptionist.html',
                          scheduled_appointments=scheduled_appointments,
                          waiting_entries=waiting_entries,
                          doctors=doctors)
@@ -149,36 +210,24 @@ def remove_from_waiting(entry_id):
 @role_required(['doctor', 'admin'])
 def doctor_waiting_area():
     """Doctor view of waiting area"""
-    # Clean up completed appointments first
     cleanup_completed_appointments()
-    
-    today = date.today()
-    
-    # Get doctor's waiting area entries
+
     if current_user.role == 'doctor':
         doctor = Doctor.query.filter_by(user_id=current_user.id).first()
         if not doctor:
             flash('Doctor profile not found.', 'error')
             return redirect(url_for('dashboard.index'))
-        
-        waiting_entries = WaitingArea.query.filter(
-            WaitingArea.doctor_id == doctor.id,
-            WaitingArea.check_in_time >= today,
-            WaitingArea.check_in_time < today + timedelta(days=1)
-        ).order_by(
+
+        waiting_entries = todays_waiting_query(doctor_id=doctor.id).order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
         ).all()
     else:
-        # Admin can see all waiting entries
-        waiting_entries = WaitingArea.query.filter(
-            WaitingArea.check_in_time >= today,
-            WaitingArea.check_in_time < today + timedelta(days=1)
-        ).order_by(
+        waiting_entries = todays_waiting_query().order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
         ).all()
-    
+
     return render_template('waiting_area/doctor.html', waiting_entries=waiting_entries)
 
 @waiting_area_bp.route('/doctor/start-appointment/<int:entry_id>', methods=['POST'])
@@ -236,41 +285,30 @@ def complete_appointment(entry_id):
 @login_required
 @role_required(['doctor', 'receptionist', 'admin'])
 def waiting_stats():
-    """API endpoint for waiting area statistics"""
-    # Clean up completed appointments first
+    """API endpoint for waiting area statistics (today's appointments only)."""
     cleanup_completed_appointments()
-    
-    today = date.today()
 
-    # Scope by doctor when called by a doctor
-    base_query = WaitingArea.query.filter(
-        WaitingArea.check_in_time >= today,
-        WaitingArea.check_in_time < today + timedelta(days=1)
-    )
+    doctor_id = None
     if current_user.role == 'doctor':
         doctor = Doctor.query.filter_by(user_id=current_user.id).first()
         if doctor:
-            base_query = base_query.filter(WaitingArea.doctor_id == doctor.id)
+            doctor_id = doctor.id
 
-    # Get waiting entries for today
-    waiting_entries = base_query.all()
-    
-    # Calculate statistics
+    waiting_entries = todays_waiting_query(doctor_id=doctor_id).all()
+
     total_waiting = len([e for e in waiting_entries if e.status == 'waiting'])
     total_in_progress = len([e for e in waiting_entries if e.status == 'in_progress'])
     total_completed = len([e for e in waiting_entries if e.status == 'completed'])
-    
-    # Long wait alerts (more than 1 hour)
+
     long_waits = [e for e in waiting_entries if e.is_long_wait() and e.status == 'waiting']
     very_long_waits = [e for e in waiting_entries if e.is_very_long_wait() and e.status == 'waiting']
-    
-    # Average wait time
+
     completed_entries = [e for e in waiting_entries if e.status == 'completed' and e.actual_start_time]
     avg_wait_time = 0
     if completed_entries:
         total_wait_time = sum(e.calculate_wait_time() for e in completed_entries)
         avg_wait_time = total_wait_time / len(completed_entries)
-    
+
     return jsonify({
         'total_waiting': total_waiting,
         'total_in_progress': total_in_progress,
@@ -310,40 +348,33 @@ def api_cleanup_completed():
 @login_required
 @role_required(['doctor', 'admin'])
 def doctor_waiting_list():
-    """API endpoint for doctor's waiting list"""
-    today = date.today()
-    
+    """API endpoint for doctor's waiting list (today's appointments only)."""
+    # Keep board in sync with appointments completed outside the waiting area UI
+    cleanup_completed_appointments()
+
     if current_user.role == 'doctor':
         doctor = Doctor.query.filter_by(user_id=current_user.id).first()
         if not doctor:
             return jsonify({'error': 'Doctor profile not found'}), 404
-        
-        waiting_entries = WaitingArea.query.filter(
-            WaitingArea.doctor_id == doctor.id,
-            WaitingArea.check_in_time >= today,
-            WaitingArea.check_in_time < today + timedelta(days=1)
-        ).order_by(
+
+        waiting_entries = todays_waiting_query(doctor_id=doctor.id).order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
         ).all()
     else:
-        # Admin can see all
-        waiting_entries = WaitingArea.query.filter(
-            WaitingArea.check_in_time >= today,
-            WaitingArea.check_in_time < today + timedelta(days=1)
-        ).order_by(
+        waiting_entries = todays_waiting_query().order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
         ).all()
-    
+
     return jsonify({
         'waiting_list': [
             {
                 'id': e.id,
                 'patient_name': e.patient.name,
                 'patient_number': e.patient.patient_number,
-                'check_in_time': e.check_in_time.strftime('%H:%M'),
-                'expected_time': e.expected_appointment_time.strftime('%H:%M'),
+                'check_in_time': e.check_in_time.strftime('%H:%M') if e.check_in_time else '',
+                'expected_time': e.expected_appointment_time.strftime('%H:%M') if e.expected_appointment_time else '',
                 'wait_time': e.calculate_wait_time(),
                 'priority': e.priority,
                 'status': e.status,

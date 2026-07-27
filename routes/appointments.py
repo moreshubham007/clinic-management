@@ -235,17 +235,15 @@ def complete_appointment(appointment_id):
         return jsonify({'error': 'Unauthorized'}), 403
     
     appointment = Appointment.query.get_or_404(appointment_id)
-    appointment.status = 'completed'
-    
-    # Update any waiting area entry for this appointment
-    waiting_entry = WaitingArea.query.filter_by(appointment_id=appointment_id).first()
-    if waiting_entry and waiting_entry.status in ['waiting', 'in_progress']:
-        waiting_entry.status = 'completed'
-        waiting_entry.completion_time = datetime.now()
-        waiting_entry.updated_at = datetime.now()
-    
+    now = datetime.now()
+    appointment.status     = 'completed'
+    appointment.updated_at = now
+
+    # Keep Live Waiting Board / Completed column in sync
+    from routes.waiting_area import sync_waiting_on_complete
+    sync_waiting_on_complete(appointment, actor_user_id=current_user.id)
+
     db.session.commit()
-    
     return jsonify({'success': True})
 
 @appointments_bp.route('/doctor/<int:doctor_id>/availability')
@@ -381,7 +379,12 @@ def update_appointment(appointment_id):
                 # Receptionist can only modify non-completed appointments
                 if appointment.status != 'completed' or current_user.role == 'admin':
                     appointment.patient_id = request.form.get('patient_id', appointment.patient_id)
-                    appointment.status = request.form.get('status', appointment.status)
+                    new_status = request.form.get('status', appointment.status)
+                    old_status = appointment.status
+                    appointment.status = new_status
+                    if new_status == 'completed' and old_status != 'completed':
+                        from routes.waiting_area import sync_waiting_on_complete
+                        sync_waiting_on_complete(appointment, actor_user_id=current_user.id)
             
             # Allow doctor to add remarks
             if current_user.role == 'doctor':
