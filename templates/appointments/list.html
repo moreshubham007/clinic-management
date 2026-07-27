@@ -124,37 +124,39 @@
 
                 <!-- Row 2 — date filter + submit -->
                 <div class="row g-2 align-items-end">
-                    <div class="col-12 col-md-auto" id="dateFilterWrap">
-                        <!-- Label row with toggle -->
+                    <div class="col-12 col-md-auto"
+                         id="dateFilterWrap"
+                         data-initial-mode="{{ 'range' if _range_mode else 'single' }}"
+                         data-from="{{ _df }}"
+                         data-to="{{ _dt }}">
+
+                        <!-- Label + toggle buttons -->
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <label class="form-label mb-0">Date</label>
-                            <div class="btn-group" role="group" id="dateModeToggle">
-                                <button type="button"
-                                        class="btn btn-xs {{ 'btn-primary' if not _range_mode else 'btn-outline-secondary' }}"
-                                        id="btnSingle" onclick="setDateMode('single')">Single</button>
-                                <button type="button"
-                                        class="btn btn-xs {{ 'btn-primary' if _range_mode else 'btn-outline-secondary' }}"
-                                        id="btnRange"  onclick="setDateMode('range')">Range</button>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-xs" id="btnSingle"
+                                        data-mode="single">Single</button>
+                                <button type="button" class="btn btn-xs" id="btnRange"
+                                        data-mode="range">Range</button>
                             </div>
                         </div>
-                        <!-- Single picker -->
-                        <div id="modeSingle" {% if _range_mode %}style="display:none"{% endif %}>
-                            <input type="date" class="form-control form-control-sm" id="single_date"
-                                   style="width:160px;"
-                                   value="{{ _df if not _range_mode else '' }}">
+
+                        <!-- Single date input -->
+                        <div id="modeSingle">
+                            <input type="date" class="form-control form-control-sm"
+                                   id="single_date" style="width:165px;">
                         </div>
-                        <!-- Range picker -->
-                        <div id="modeRange" class="d-flex align-items-center gap-1"
-                             {% if not _range_mode %}style="display:none"{% endif %}>
-                            <input type="date" class="form-control form-control-sm" id="range_from"
-                                   style="width:150px;"
-                                   value="{{ _df if _range_mode else '' }}">
-                            <span class="text-muted fw-bold">→</span>
-                            <input type="date" class="form-control form-control-sm" id="range_to"
-                                   style="width:150px;"
-                                   value="{{ _dt if _range_mode else '' }}">
+
+                        <!-- Range date inputs -->
+                        <div id="modeRange" class="d-flex align-items-center gap-1">
+                            <input type="date" class="form-control form-control-sm"
+                                   id="range_from" style="width:148px;" placeholder="From">
+                            <span class="text-muted fw-semibold px-1">→</span>
+                            <input type="date" class="form-control form-control-sm"
+                                   id="range_to" style="width:148px;" placeholder="To">
                         </div>
-                        <!-- Hidden fields submitted to server -->
+
+                        <!-- Hidden: actual submitted values -->
                         <input type="hidden" name="date_from" id="hid_date_from" value="{{ _df }}">
                         <input type="hidden" name="date_to"   id="hid_date_to"   value="{{ _dt }}">
                     </div>
@@ -685,31 +687,54 @@ document.querySelectorAll('.priority-option').forEach(btn => {
 });
 
 // ── Smart date filter ──────────────────────────────────────────────
-(function () {
-    const modeSingle = document.getElementById('modeSingle');
-    const modeRange  = document.getElementById('modeRange');
-    const btnSingle  = document.getElementById('btnSingle');
-    const btnRange   = document.getElementById('btnRange');
-    const singleIn   = document.getElementById('single_date');
-    const rangeFrom  = document.getElementById('range_from');
-    const rangeTo    = document.getElementById('range_to');
-    const hidFrom    = document.getElementById('hid_date_from');
-    const hidTo      = document.getElementById('hid_date_to');
+document.addEventListener('DOMContentLoaded', function () {
+    var wrap      = document.getElementById('dateFilterWrap');
+    if (!wrap) return;
 
-    function setDateMode(mode) {
-        const isSingle = mode === 'single';
-        modeSingle.style.display = isSingle ? '' : 'none';
-        modeRange.style.display  = isSingle ? 'none' : '';
-        btnSingle.classList.toggle('btn-primary',          isSingle);
-        btnSingle.classList.toggle('btn-outline-secondary',!isSingle);
-        btnRange.classList.toggle('btn-primary',           !isSingle);
-        btnRange.classList.toggle('btn-outline-secondary',  isSingle);
+    var modeSingle = document.getElementById('modeSingle');
+    var modeRange  = document.getElementById('modeRange');
+    var btnSingle  = document.getElementById('btnSingle');
+    var btnRange   = document.getElementById('btnRange');
+    var singleIn   = document.getElementById('single_date');
+    var rangeFrom  = document.getElementById('range_from');
+    var rangeTo    = document.getElementById('range_to');
+    var hidFrom    = document.getElementById('hid_date_from');
+    var hidTo      = document.getElementById('hid_date_to');
+
+    // Pre-fill visible inputs from server values
+    var initMode = wrap.dataset.initialMode || 'single';
+    var initFrom = wrap.dataset.from || '';
+    var initTo   = wrap.dataset.to   || '';
+
+    function applyMode(mode) {
+        if (mode === 'single') {
+            modeSingle.style.display = '';
+            modeRange.style.display  = 'none';
+            btnSingle.className = 'btn btn-xs btn-primary';
+            btnRange.className  = 'btn btn-xs btn-outline-secondary';
+        } else {
+            modeSingle.style.display = 'none';
+            modeRange.style.display  = '';
+            btnSingle.className = 'btn btn-xs btn-outline-secondary';
+            btnRange.className  = 'btn btn-xs btn-primary';
+        }
     }
-    window.setDateMode = setDateMode;
 
-    // Sync hidden inputs before submit
-    const filterForm = document.getElementById('filterForm');
-    filterForm?.addEventListener('submit', function () {
+    // Restore state from server
+    applyMode(initMode);
+    if (initMode === 'single') {
+        singleIn.value  = initFrom;
+    } else {
+        rangeFrom.value = initFrom;
+        rangeTo.value   = initTo;
+    }
+
+    // Toggle button click listeners
+    btnSingle.addEventListener('click', function () { applyMode('single'); });
+    btnRange.addEventListener('click',  function () { applyMode('range');  });
+
+    // Sync hidden inputs on submit
+    document.getElementById('filterForm').addEventListener('submit', function () {
         if (modeRange.style.display === 'none') {
             hidFrom.value = singleIn.value;
             hidTo.value   = singleIn.value;
@@ -718,6 +743,6 @@ document.querySelectorAll('.priority-option').forEach(btn => {
             hidTo.value   = rangeTo.value;
         }
     });
-})();
+});
 </script>
 {% endblock %} 
