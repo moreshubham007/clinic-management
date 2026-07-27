@@ -388,8 +388,8 @@ function renderCard(entry, status) {
 }
 
 function refreshWaitingList() {
-    fetch('/waiting-area/api/doctor-waiting-list')
-        .then(r => r.json())
+    fetch('/waiting-area/api/doctor-waiting-list', {cache: 'no-store'})
+    .then(r => r.json())
         .then(data => {
             const list = data.waiting_list || [];
             const byStatus = { waiting: [], in_progress: [], completed: [] };
@@ -442,7 +442,7 @@ function completeAppointment(id, name) {
 }
 
 function showStats() {
-    fetch('/waiting-area/api/waiting-stats')
+    fetch('/waiting-area/api/waiting-stats', {cache: 'no-store'})
         .then(r => r.json())
         .then(d => {
             document.getElementById('statWaiting').textContent = d.total_waiting;
@@ -497,7 +497,7 @@ function manualCleanup() {
 }
 
 function refreshStats() {
-    fetch('/waiting-area/api/waiting-stats')
+    fetch('/waiting-area/api/waiting-stats', {cache: 'no-store'})
         .then(r => r.json())
         .then(d => {
             document.getElementById('statWaiting').textContent   = d.total_waiting;

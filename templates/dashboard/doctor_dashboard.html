@@ -105,7 +105,7 @@
         <div class="appt-list">
           {% for appt in today_appointments %}
           {% set sc = appt.status %}
-          <div class="appt-row priority-{{ appt.priority or 'normal' }} status-{{ sc }}">
+          <div class="appt-row priority-{{ appt.priority or 'normal' }} status-{{ sc }}" data-appt-id="{{ appt.id }}">
             {# Time chip #}
             <div class="appt-time">
               <span class="time-badge">{{ appt.datetime.strftime('%H:%M') }}</span>
@@ -574,9 +574,31 @@
 /* ── mark appointment completed ─────────────────────────────────────────── */
 function markCompleted(id) {
     if (!confirm('Mark this appointment as completed?')) return;
-    fetch(`/appointments/${id}/complete`, {method:'POST',
-        headers:{'Content-Type':'application/json'}})
-    .then(r => { if (r.ok) location.reload(); });
+    fetch(`/appointments/${id}/complete`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Update row status badge in-place
+            const row = document.querySelector(`[data-appt-id="${id}"]`);
+            if (row) {
+                row.classList.remove('status-scheduled');
+                row.classList.add('status-completed');
+                const statusEl = row.querySelector('.appt-status');
+                if (statusEl) statusEl.innerHTML = '<span class="soft-badge badge-success-soft">Completed</span>';
+                const btn = row.querySelector('.btn-outline-success');
+                if (btn) btn.remove();
+            }
+            // Immediately refresh the mini waiting board (no page reload needed)
+            refreshBoard();
+        } else {
+            alert('Could not mark as completed. Please try again.');
+        }
+    })
+    .catch(() => alert('Network error. Please check your connection and try again.'));
 }
 
 /* ── mini kanban + stat strip refresh ──────────────────────────────────── */
@@ -589,7 +611,7 @@ function renderMiniCard(e) {
 }
 
 function refreshBoard() {
-    fetch('/waiting-area/api/doctor-waiting-list')
+    fetch('/waiting-area/api/doctor-waiting-list', {cache: 'no-store'})
     .then(r => r.json())
     .then(d => {
         const list = d.waiting_list || [];
