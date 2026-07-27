@@ -206,7 +206,8 @@ def create_order():
             status='pending',
             payment_status=payment_status,
             payment_amount=payment_amount,
-            payment_mode=payment_mode if payment_status == 'paid' else None
+            payment_mode=payment_mode if payment_status == 'paid' else None,
+            created_by_id=current_user.id
         )
         db.session.add(order)
         db.session.flush()

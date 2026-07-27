@@ -67,6 +67,17 @@ CREATE TABLE IF NOT EXISTS appointment_request (
 ALTER TABLE appointment_request
     MODIFY COLUMN IF EXISTS preferred_time VARCHAR(30) NULL;
 
+-- ── 6. Add created_by_id to medicine_order (tracks staff vs public orders) ──
+ALTER TABLE medicine_order
+    ADD COLUMN IF NOT EXISTS created_by_id INT NULL AFTER payment_mode;
+
+-- Add FK only if it doesn't already exist (MariaDB doesn't support IF NOT EXISTS
+-- for constraints, so wrap in a stored procedure trick or run manually if needed)
+ALTER TABLE medicine_order
+    ADD CONSTRAINT fk_mo_created_by
+        FOREIGN KEY (created_by_id) REFERENCES user(id)
+        ON DELETE SET NULL;
+
 -- =============================================================
 -- Verification queries — run these after migration to confirm
 -- =============================================================

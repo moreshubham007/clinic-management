@@ -175,9 +175,11 @@ class MedicineOrder(db.Model):
     payment_status = db.Column(db.String(20), default='unpaid') # unpaid/paid
     payment_amount = db.Column(db.Numeric(10, 2))
     payment_mode = db.Column(db.String(20))                     # cash/online/upi
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # null = public/patient
     created_at = db.Column(db.DateTime, default=lambda: datetime.now())
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
     patient = db.relationship('User', backref='medicine_orders', foreign_keys=[patient_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
 
 
 class AppointmentRequest(db.Model):

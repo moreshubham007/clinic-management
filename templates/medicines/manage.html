@@ -79,6 +79,7 @@
                             <th>Delivery</th>
                             <th>Payment</th>
                             <th>Placed On</th>
+                            <th>Created By</th>
                             <th>Status</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -122,6 +123,32 @@
                         </td>
 
                         <td><small>{{ order.created_at.strftime('%d %b %Y') }}<br>{{ order.created_at.strftime('%I:%M %p') }}</small></td>
+
+                        <!-- Created By -->
+                        <td>
+                            {% if order.created_by %}
+                                {% if order.created_by.role == 'admin' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                    <i class="fas fa-user-shield me-1"></i>Admin
+                                </span>
+                                {% elif order.created_by.role == 'receptionist' %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                    <i class="fas fa-user-tie me-1"></i>Receptionist
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                    <i class="fas fa-user me-1"></i>{{ order.created_by.role | title }}
+                                </span>
+                                {% endif %}
+                                <br><small class="text-muted">{{ order.created_by.name }}</small>
+                            {% else %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="fas fa-globe me-1"></i>Patient
+                                </span>
+                                <br><small class="text-muted">Public form</small>
+                            {% endif %}
+                        </td>
+
                         <td>
                             <span class="badge
                                 {% if order.status == 'pending' %}bg-warning text-dark
@@ -175,7 +202,7 @@
                     <!-- Notes / Address row -->
                     {% if order.additional_notes or order.delivery_address %}
                     <tr class="table-light">
-                        <td colspan="9" class="py-1 ps-4">
+                        <td colspan="10" class="py-1 ps-4">
                             <small class="text-muted">
                                 {% if order.delivery_address %}<i class="fas fa-map-marker-alt me-1"></i>{{ order.delivery_address }} &nbsp;{% endif %}
                                 {% if order.additional_notes %}<i class="fas fa-sticky-note me-1"></i>{{ order.additional_notes }}{% endif %}
@@ -187,7 +214,7 @@
                     <!-- Payment details collapse row (only rendered when editable) -->
                     {% if order.status not in ['ready', 'delivered', 'cancelled'] %}
                     <tr class="collapse" id="payment-{{ order.id }}">
-                        <td colspan="9" class="bg-light py-2 px-4">
+                        <td colspan="10" class="bg-light py-2 px-4">
                             <form method="POST"
                                   action="{{ url_for('medicines.update_payment', order_id=order.id, status=status_filter) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -228,7 +255,7 @@
                     <!-- Courier details collapse row (only for courier orders) -->
                     {% if order.delivery_type == 'courier' %}
                     <tr class="collapse" id="courier-{{ order.id }}">
-                        <td colspan="9" class="bg-light py-2 px-4">
+                        <td colspan="10" class="bg-light py-2 px-4">
                             <form method="POST"
                                   action="{{ url_for('medicines.update_courier_details', order_id=order.id, status=status_filter) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
