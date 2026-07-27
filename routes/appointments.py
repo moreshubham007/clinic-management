@@ -1,9 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Doctor, Appointment, Case, CaseHistory, WaitingArea, AppointmentRequest
 from datetime import datetime, timedelta
 from functools import wraps
+import io
 
 appointments_bp = Blueprint('appointments', __name__)
 
@@ -426,6 +427,167 @@ def search_patient():
         'mobile_number': patient.mobile_number,
         'patient_number': patient.patient_number
     } for patient in patients])
+
+
+def _build_appointment_query():
+    """Return a filtered Appointment query based on current request args + user role."""
+    query = Appointment.query
+    if current_user.role == 'doctor':
+        query = query.filter_by(doctor_id=current_user.doctor.id)
+    elif current_user.role == 'patient':
+        query = query.filter_by(patient_id=current_user.id)
+
+    status = request.args.get('status')
+    if status:
+        query = query.filter_by(status=status)
+
+    date = request.args.get('date')
+    if date:
+        try:
+            fd = datetime.strptime(date, '%Y-%m-%d').date()
+            query = query.filter(db.func.date(Appointment.datetime) == fd)
+        except ValueError:
+            pass
+
+    doctor_id = request.args.get('doctor')
+    if doctor_id and current_user.role in ['admin', 'receptionist']:
+        try:
+            query = query.filter_by(doctor_id=int(doctor_id))
+        except ValueError:
+            pass
+
+    patient_type = request.args.get('patient_type')
+    if patient_type:
+        query = query.filter(Appointment.patient_type == patient_type)
+
+    priority = request.args.get('priority')
+    if priority:
+        query = query.filter(Appointment.priority == priority)
+
+    return query.order_by(Appointment.datetime.desc())
+
+
+@appointments_bp.route('/export')
+@login_required
+def export_appointments():
+    if current_user.role not in ['admin', 'doctor', 'receptionist']:
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    fmt = request.args.get('format', 'excel')
+    appointments = _build_appointment_query().all()
+
+    # ── Print view ────────────────────────────────────────────────────────────
+    if fmt == 'print':
+        filters = {
+            'status':       request.args.get('status', ''),
+            'date':         request.args.get('date', ''),
+            'doctor':       request.args.get('doctor', ''),
+            'patient_type': request.args.get('patient_type', ''),
+            'priority':     request.args.get('priority', ''),
+        }
+        return render_template('appointments/print.html',
+                               appointments=appointments,
+                               filters=filters,
+                               generated_at=datetime.now())
+
+    # ── Excel export ──────────────────────────────────────────────────────────
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        flash('openpyxl not installed. Please rebuild the Docker image.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Appointments'
+
+    # Header style
+    hdr_font  = Font(bold=True, color='FFFFFF', size=11)
+    hdr_fill  = PatternFill('solid', fgColor='2E7D32')
+    thin      = Side(style='thin', color='CCCCCC')
+    border    = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center    = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    headers = [
+        'Date', 'Time', 'Patient Name', 'Patient ID', 'Patient Type',
+        'Priority', 'Doctor', 'Status',
+        'Consultation (₹)', 'Medicine (₹)', 'Discount (₹)', 'Total Bill (₹)',
+        'Payment Status', 'Amount Paid (₹)', 'Payment Mode', 'Notes'
+    ]
+    ws.append(headers)
+    for col_idx, _ in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font      = hdr_font
+        cell.fill      = hdr_fill
+        cell.alignment = center
+        cell.border    = border
+
+    # Data rows
+    alt_fill = PatternFill('solid', fgColor='F1F8E9')
+    for row_num, appt in enumerate(appointments, 2):
+        consult = float(appt.consultation_fee or 0)
+        meds    = float(appt.medicine_charges  or 0)
+        disc    = float(appt.discount          or 0)
+        total   = consult + meds - disc
+
+        row = [
+            appt.datetime.strftime('%d/%m/%Y'),
+            appt.datetime.strftime('%H:%M'),
+            appt.patient.name if appt.patient else '',
+            appt.patient.patient_number if appt.patient else '',
+            (appt.patient_type or '').title(),
+            (appt.priority or '').title(),
+            f"Dr. {appt.doctor.user.name}" if appt.doctor else '',
+            (appt.status or '').title(),
+            consult if consult else '',
+            meds    if meds    else '',
+            disc    if disc    else '',
+            total   if total   else '',
+            (appt.payment_status or '').title(),
+            float(appt.payment_amount) if appt.payment_amount else '',
+            (appt.payment_mode or '').title(),
+            appt.notes or '',
+        ]
+        ws.append(row)
+        fill = alt_fill if row_num % 2 == 0 else None
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_num, column=col_idx)
+            cell.border    = border
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            if fill:
+                cell.fill = fill
+
+    # Column widths
+    col_widths = [12, 8, 22, 12, 14, 10, 22, 12, 16, 14, 12, 14, 14, 16, 14, 30]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.row_dimensions[1].height = 30
+
+    # Freeze header row
+    ws.freeze_panes = 'A2'
+
+    # Add summary row at the bottom
+    ws.append([])
+    summary_row = ws.max_row + 1
+    ws.cell(summary_row, 1, f'Total appointments: {len(appointments)}').font = Font(bold=True)
+    ws.cell(summary_row, 12, sum(
+        float(a.consultation_fee or 0) + float(a.medicine_charges or 0) - float(a.discount or 0)
+        for a in appointments
+    )).font = Font(bold=True, color='2E7D32')
+
+    # Save to buffer and send
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    filename = f'appointments_{date_str}.xlsx'
+    return send_file(buf, as_attachment=True,
+                     download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @appointments_bp.route('/<int:appointment_id>/billing', methods=['POST'])

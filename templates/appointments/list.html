@@ -5,18 +5,46 @@
 
 {% block content %}
 <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h2>Appointments</h2>
-        {% if current_user.role in ['admin', 'receptionist', 'patient', 'doctor'] %}
-        <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> New Appointment
-            {% if current_user.role == 'doctor' %}
-                <small class="d-block" style="font-size: 0.75em; margin-top: 2px;">
-                    (For yourself)
-                </small>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            {% if current_user.role in ['admin', 'doctor', 'receptionist'] %}
+            <!-- Export buttons — pass all current filters through -->
+            <div class="btn-group">
+                <a href="{{ url_for('appointments.export_appointments',
+                            format='excel',
+                            status=request.args.get('status',''),
+                            date=request.args.get('date',''),
+                            doctor=request.args.get('doctor',''),
+                            patient_type=request.args.get('patient_type',''),
+                            priority=request.args.get('priority','')) }}"
+                   class="btn btn-success btn-sm"
+                   title="Export filtered appointments to Excel">
+                    <i class="fas fa-file-excel me-1"></i>Excel
+                </a>
+                <a href="{{ url_for('appointments.export_appointments',
+                            format='print',
+                            status=request.args.get('status',''),
+                            date=request.args.get('date',''),
+                            doctor=request.args.get('doctor',''),
+                            patient_type=request.args.get('patient_type',''),
+                            priority=request.args.get('priority','')) }}"
+                   class="btn btn-secondary btn-sm"
+                   target="_blank"
+                   title="Print-friendly view of filtered appointments">
+                    <i class="fas fa-print me-1"></i>Print
+                </a>
+            </div>
             {% endif %}
-        </a>
-        {% endif %}
+            {% if current_user.role in ['admin', 'receptionist', 'patient', 'doctor'] %}
+            <a href="{{ url_for('appointments.create_appointment') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> New Appointment
+                {% if current_user.role == 'doctor' %}
+                    <small class="d-block" style="font-size: 0.75em; margin-top: 2px;">(For yourself)</small>
+                {% endif %}
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Filters -->
