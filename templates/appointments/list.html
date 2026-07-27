@@ -14,7 +14,8 @@
                 <a href="{{ url_for('appointments.export_appointments',
                             format='excel',
                             status=request.args.get('status',''),
-                            date=request.args.get('date',''),
+                            date_from=request.args.get('date_from',''),
+                            date_to=request.args.get('date_to',''),
                             doctor=request.args.get('doctor',''),
                             patient_type=request.args.get('patient_type',''),
                             priority=request.args.get('priority',''),
@@ -28,7 +29,8 @@
                 <a href="{{ url_for('appointments.export_appointments',
                             format='print',
                             status=request.args.get('status',''),
-                            date=request.args.get('date',''),
+                            date_from=request.args.get('date_from',''),
+                            date_to=request.args.get('date_to',''),
                             doctor=request.args.get('doctor',''),
                             patient_type=request.args.get('patient_type',''),
                             priority=request.args.get('priority',''),
@@ -86,9 +88,14 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="date" name="date"
-                           value="{{ request.args.get('date', '') }}">
+                    <label for="date_from" class="form-label">Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from"
+                           value="{{ request.args.get('date_from', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">Date To</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to"
+                           value="{{ request.args.get('date_to', '') }}">
                 </div>
                 <div class="col-md-3">
                     <label for="payment_status" class="form-label">Payment Status</label>
@@ -109,8 +116,9 @@
                 </div>
                 <div class="col-md-3 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary flex-fill">Filter</button>
-                    {% if request.args.get('status') or request.args.get('date') or request.args.get('priority')
-                          or request.args.get('patient_type') or request.args.get('payment_status') or request.args.get('has_bill') %}
+                    {% if request.args.get('status') or request.args.get('date_from') or request.args.get('date_to')
+                          or request.args.get('priority') or request.args.get('patient_type')
+                          or request.args.get('payment_status') or request.args.get('has_bill') %}
                     <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-secondary" title="Clear filters">
                         <i class="fas fa-times"></i>
                     </a>
@@ -482,9 +490,13 @@
             {% if pagination.pages > 1 %}
             <nav>
                 <ul class="pagination pagination-sm mb-0 gap-1">
-                    {% set pargs = {'status': request.args.get('status',''), 'date': request.args.get('date',''),
-                                   'doctor': request.args.get('doctor',''), 'patient_type': request.args.get('patient_type',''),
-                                   'priority': request.args.get('priority',''), 'payment_status': request.args.get('payment_status',''),
+                    {% set pargs = {'status': request.args.get('status',''),
+                                   'date_from': request.args.get('date_from',''),
+                                   'date_to': request.args.get('date_to',''),
+                                   'doctor': request.args.get('doctor',''),
+                                   'patient_type': request.args.get('patient_type',''),
+                                   'priority': request.args.get('priority',''),
+                                   'payment_status': request.args.get('payment_status',''),
                                    'has_bill': request.args.get('has_bill','')} %}
                     <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
                         <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.prev_num, **pargs) if pagination.has_prev else '#' }}">

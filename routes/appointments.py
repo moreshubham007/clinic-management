@@ -46,14 +46,21 @@ def list_appointments():
     if status:
         query = query.filter_by(status=status)
     
-    # Apply date filter
-    date = request.args.get('date')
-    if date:
+    # Apply date range filter
+    date_from = request.args.get('date_from')
+    date_to   = request.args.get('date_to')
+    if date_from:
         try:
-            filter_date = datetime.strptime(date, '%Y-%m-%d').date()
-            query = query.filter(db.func.date(Appointment.datetime) == filter_date)
+            query = query.filter(Appointment.datetime >= datetime.strptime(date_from, '%Y-%m-%d'))
         except ValueError:
-            flash('Invalid date format', 'warning')
+            flash('Invalid date from format', 'warning')
+    if date_to:
+        try:
+            dt_to = datetime.strptime(date_to, '%Y-%m-%d')
+            # include the full day
+            query = query.filter(Appointment.datetime < datetime(dt_to.year, dt_to.month, dt_to.day, 23, 59, 59))
+        except ValueError:
+            flash('Invalid date to format', 'warning')
     
     # Apply doctor filter (for admin/receptionist)
     doctor_id = request.args.get('doctor')
@@ -459,11 +466,17 @@ def _build_appointment_query():
     if status:
         query = query.filter_by(status=status)
 
-    date = request.args.get('date')
-    if date:
+    date_from_r = request.args.get('date_from')
+    date_to_r   = request.args.get('date_to')
+    if date_from_r:
         try:
-            fd = datetime.strptime(date, '%Y-%m-%d').date()
-            query = query.filter(db.func.date(Appointment.datetime) == fd)
+            query = query.filter(Appointment.datetime >= datetime.strptime(date_from_r, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to_r:
+        try:
+            dt_to = datetime.strptime(date_to_r, '%Y-%m-%d')
+            query = query.filter(Appointment.datetime < datetime(dt_to.year, dt_to.month, dt_to.day, 23, 59, 59))
         except ValueError:
             pass
 
