@@ -17,7 +17,9 @@
                             date=request.args.get('date',''),
                             doctor=request.args.get('doctor',''),
                             patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) }}"
+                            priority=request.args.get('priority',''),
+                            payment_status=request.args.get('payment_status',''),
+                            has_bill=request.args.get('has_bill','')) }}"
                    class="btn btn-success btn-sm"
                    target="_blank"
                    title="Export filtered appointments to Excel">
@@ -29,7 +31,9 @@
                             date=request.args.get('date',''),
                             doctor=request.args.get('doctor',''),
                             patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) }}"
+                            priority=request.args.get('priority',''),
+                            payment_status=request.args.get('payment_status',''),
+                            has_bill=request.args.get('has_bill','')) }}"
                    class="btn btn-secondary btn-sm"
                    target="_blank"
                    title="Print-friendly view of filtered appointments">
@@ -83,12 +87,34 @@
                 </div>
                 <div class="col-md-3">
                     <label for="date" class="form-label">Date</label>
-                    <input type="date" class="form-control" id="date" name="date" 
+                    <input type="date" class="form-control" id="date" name="date"
                            value="{{ request.args.get('date', '') }}">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    <label for="payment_status" class="form-label">Payment Status</label>
+                    <select class="form-select" id="payment_status" name="payment_status">
+                        <option value="">All Payments</option>
+                        <option value="unpaid"  {% if request.args.get('payment_status') == 'unpaid'  %}selected{% endif %}>Unpaid</option>
+                        <option value="partial" {% if request.args.get('payment_status') == 'partial' %}selected{% endif %}>Partial</option>
+                        <option value="paid"    {% if request.args.get('payment_status') == 'paid'    %}selected{% endif %}>Paid</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="has_bill" class="form-label">Bill</label>
+                    <select class="form-select" id="has_bill" name="has_bill">
+                        <option value="">All</option>
+                        <option value="yes" {% if request.args.get('has_bill') == 'yes' %}selected{% endif %}>Has Bill</option>
+                        <option value="no"  {% if request.args.get('has_bill') == 'no'  %}selected{% endif %}>No Bill</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary flex-fill">Filter</button>
+                    {% if request.args.get('status') or request.args.get('date') or request.args.get('priority')
+                          or request.args.get('patient_type') or request.args.get('payment_status') or request.args.get('has_bill') %}
+                    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-secondary" title="Clear filters">
+                        <i class="fas fa-times"></i>
+                    </a>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -456,11 +482,12 @@
             {% if pagination.pages > 1 %}
             <nav>
                 <ul class="pagination pagination-sm mb-0 gap-1">
+                    {% set pargs = {'status': request.args.get('status',''), 'date': request.args.get('date',''),
+                                   'doctor': request.args.get('doctor',''), 'patient_type': request.args.get('patient_type',''),
+                                   'priority': request.args.get('priority',''), 'payment_status': request.args.get('payment_status',''),
+                                   'has_bill': request.args.get('has_bill','')} %}
                     <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
-                        <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.prev_num,
-                            status=request.args.get('status',''), date=request.args.get('date',''),
-                            doctor=request.args.get('doctor',''), patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) if pagination.has_prev else '#' }}">
+                        <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.prev_num, **pargs) if pagination.has_prev else '#' }}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -468,32 +495,20 @@
                     {% if ns.start < 1 %}{% set ns.start = 1 %}{% endif %}
                     {% if ns.end > pagination.pages %}{% set ns.end = pagination.pages %}{% endif %}
                     {% if ns.start > 1 %}
-                    <li class="page-item"><a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=1,
-                            status=request.args.get('status',''), date=request.args.get('date',''),
-                            doctor=request.args.get('doctor',''), patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) }}">1</a></li>
+                    <li class="page-item"><a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=1, **pargs) }}">1</a></li>
                     {% if ns.start > 2 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
                     {% endif %}
                     {% for p in range(ns.start, ns.end + 1) %}
                     <li class="page-item {{ 'active' if p == pagination.page }}">
-                        <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=p,
-                            status=request.args.get('status',''), date=request.args.get('date',''),
-                            doctor=request.args.get('doctor',''), patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) }}">{{ p }}</a>
+                        <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=p, **pargs) }}">{{ p }}</a>
                     </li>
                     {% endfor %}
                     {% if ns.end < pagination.pages %}
                     {% if ns.end < pagination.pages - 1 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
-                    <li class="page-item"><a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.pages,
-                            status=request.args.get('status',''), date=request.args.get('date',''),
-                            doctor=request.args.get('doctor',''), patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) }}">{{ pagination.pages }}</a></li>
+                    <li class="page-item"><a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.pages, **pargs) }}">{{ pagination.pages }}</a></li>
                     {% endif %}
                     <li class="page-item {{ 'disabled' if not pagination.has_next }}">
-                        <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.next_num,
-                            status=request.args.get('status',''), date=request.args.get('date',''),
-                            doctor=request.args.get('doctor',''), patient_type=request.args.get('patient_type',''),
-                            priority=request.args.get('priority','')) if pagination.has_next else '#' }}">
+                        <a class="page-link rounded-3" href="{{ url_for('appointments.list_appointments', page=pagination.next_num, **pargs) if pagination.has_next else '#' }}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>

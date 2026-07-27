@@ -66,11 +66,29 @@ def list_appointments():
     # Add patient_type filter
     if request.args.get('patient_type'):
         query = query.filter(Appointment.patient_type == request.args.get('patient_type'))
-    
+
     # Add priority filter
     if request.args.get('priority'):
         query = query.filter(Appointment.priority == request.args.get('priority'))
-    
+
+    # Add payment_status filter
+    if request.args.get('payment_status'):
+        query = query.filter(Appointment.payment_status == request.args.get('payment_status'))
+
+    # Add has_bill filter
+    has_bill = request.args.get('has_bill')
+    if has_bill == 'yes':
+        query = query.filter(
+            db.or_(Appointment.consultation_fee > 0, Appointment.medicine_charges > 0)
+        )
+    elif has_bill == 'no':
+        query = query.filter(
+            db.and_(
+                db.or_(Appointment.consultation_fee == None, Appointment.consultation_fee == 0),
+                db.or_(Appointment.medicine_charges == None, Appointment.medicine_charges == 0)
+            )
+        )
+
     # Get all active doctors for the filter dropdown
     doctors = Doctor.query.join(User).filter(User.is_active == True).all()
 
@@ -463,6 +481,26 @@ def _build_appointment_query():
     priority = request.args.get('priority')
     if priority:
         query = query.filter(Appointment.priority == priority)
+
+    payment_status = request.args.get('payment_status')
+    if payment_status:
+        query = query.filter(Appointment.payment_status == payment_status)
+
+    has_bill = request.args.get('has_bill')
+    if has_bill == 'yes':
+        query = query.filter(
+            db.or_(
+                Appointment.consultation_fee > 0,
+                Appointment.medicine_charges > 0
+            )
+        )
+    elif has_bill == 'no':
+        query = query.filter(
+            db.and_(
+                db.or_(Appointment.consultation_fee == None, Appointment.consultation_fee == 0),
+                db.or_(Appointment.medicine_charges == None, Appointment.medicine_charges == 0)
+            )
+        )
 
     return query.order_by(Appointment.datetime.desc())
 
