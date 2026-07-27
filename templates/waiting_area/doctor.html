@@ -1,102 +1,285 @@
 {% extends "base.html" %}
+{% block title %}My Waiting Area — Doctor{% endblock %}
+{% block header_title %}My Waiting Area{% endblock %}
 
-{% block title %}Waiting Area - Doctor{% endblock %}
+{% block extra_css %}
+<style>
+/* ── Stat strip ───────────────────────────────────────── */
+.wa-stats {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+.wa-stat {
+    flex: 1;
+    min-width: 120px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: .75rem;
+    padding: .8rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.wa-stat-icon {
+    width: 38px; height: 38px;
+    border-radius: .5rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; flex-shrink: 0;
+}
+.wa-stat-num  { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.wa-stat-lbl  { font-size: .72rem; color: #6b7280; font-weight: 500; margin-top: 2px; }
+.wa-stat.s-wait  .wa-stat-icon { background: #dbeafe; color: #1d4ed8; }
+.wa-stat.s-prog  .wa-stat-icon { background: #fef9c3; color: #92400e; }
+.wa-stat.s-done  .wa-stat-icon { background: #dcfce7; color: #166534; }
+.wa-stat.s-avg   .wa-stat-icon { background: var(--p100); color: var(--p700); }
+.wa-stat.s-wait  .wa-stat-num  { color: #1d4ed8; }
+.wa-stat.s-prog  .wa-stat-num  { color: #92400e; }
+.wa-stat.s-done  .wa-stat-num  { color: #166534; }
+.wa-stat.s-avg   .wa-stat-num  { color: var(--p700); }
+
+/* ── Kanban board ─────────────────────────────────────── */
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+@media (max-width: 900px)  { .kanban-board { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px)  { .kanban-board { grid-template-columns: 1fr; } }
+
+.kanban-col {
+    background: #f8f9fc;
+    border: 1px solid #e9ecef;
+    border-radius: .875rem;
+    overflow: hidden;
+    min-height: 200px;
+}
+.kanban-col-header {
+    padding: .8rem 1rem;
+    background: #fff;
+    border-bottom: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.col-title {
+    font-size: .85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+}
+.col-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.col-dot.blue   { background: #3b82f6; }
+.col-dot.orange { background: #f59e0b; }
+.col-dot.green  { background: #22c55e; }
+.col-count {
+    font-size: .72rem; font-weight: 700;
+    background: #f3f4f6; color: #374151;
+    padding: .18rem .55rem;
+    border-radius: 9999px;
+    min-width: 24px; text-align: center;
+}
+.kanban-col-body {
+    padding: .65rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+/* ── Patient card ─────────────────────────────────────── */
+.pt-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-left: 3px solid #d1d5db;
+    border-radius: .625rem;
+    padding: .75rem .85rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    transition: box-shadow .18s, transform .18s;
+}
+.pt-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); transform: translateY(-1px); }
+.pt-card.p-urgent { border-left-color: #ef4444; }
+.pt-card.p-high   { border-left-color: #f59e0b; }
+.pt-card.p-normal { border-left-color: var(--p500); }
+.pt-card.p-low    { border-left-color: #d1d5db; }
+.pt-card.warn-long   { background: #fffbeb; }
+.pt-card.warn-urgent { background: #fff5f5; }
+
+.pt-top {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .45rem;
+}
+.pt-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--p400), var(--p600));
+    color: #fff;
+    font-size: .7rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.pt-name   { font-size: .875rem; font-weight: 600; line-height: 1.2; }
+.pt-id     { font-size: .72rem; color: #9ca3af; }
+
+.pt-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin-bottom: .55rem;
+}
+.chip {
+    display: inline-flex; align-items: center; gap: .2rem;
+    font-size: .7rem; font-weight: 500;
+    padding: .18rem .45rem;
+    border-radius: .3rem;
+    background: #f3f4f6; color: #374151;
+}
+.chip.c-time  { background: var(--p50); color: var(--p700); }
+.chip.c-exp   { background: #f0fdf4; color: #166534; }
+.chip.c-wt-ok { background: #dcfce7; color: #166534; }
+.chip.c-wt-w  { background: #fef9c3; color: #92400e; }
+.chip.c-wt-u  { background: #fee2e2; color: #b91c1c; }
+.chip.c-pri-urgent { background: #fee2e2; color: #b91c1c; }
+.chip.c-pri-high   { background: #fef9c3; color: #92400e; }
+.chip.c-pri-normal { background: var(--p50);  color: var(--p700); }
+.chip.c-pri-low    { background: #f3f4f6; color: #6b7280; }
+
+.pt-actions { display: flex; gap: .35rem; justify-content: flex-end; }
+
+/* Empty / loading */
+.col-empty, .col-loading {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #9ca3af;
+    font-size: .83rem;
+}
+.col-empty i, .col-loading i { display: block; font-size: 1.75rem; margin-bottom: .5rem; opacity: .4; }
+
+/* Live dot */
+.live-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
+    50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Notification Area for Auto-cleanup -->
-    <div class="row mb-3" id="cleanup-notification" style="display: none;">
-        <div class="col-12">
-            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                <i class="fas fa-info-circle"></i>
-                <span id="cleanup-message"></span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+
+    <!-- Long wait alert -->
+    <div id="longWaitAlert" class="flash-item flash-warning d-none mb-3" style="display:none!important;">
+        <span><i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Long Wait Alert:</strong> Some patients have been waiting over 1 hour!</span>
+        <button class="btn-close btn-close-sm" onclick="this.closest('#longWaitAlert').classList.add('d-none')"></button>
+    </div>
+
+    <!-- Top bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="live-dot"></span>
+            <span class="text-muted" style="font-size:.8rem;">Live · auto-refreshes every 30s</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshWaitingList()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="showStats()">
+                <i class="fas fa-chart-bar me-1"></i>Stats
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="manualCleanup()">
+                <i class="fas fa-broom me-1"></i>Cleanup
+            </button>
+        </div>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="wa-stats">
+        <div class="wa-stat s-wait">
+            <div class="wa-stat-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div><div class="wa-stat-num" id="statWaiting">—</div><div class="wa-stat-lbl">Waiting</div></div>
+        </div>
+        <div class="wa-stat s-prog">
+            <div class="wa-stat-icon"><i class="fas fa-stethoscope"></i></div>
+            <div><div class="wa-stat-num" id="statProgress">—</div><div class="wa-stat-lbl">In Progress</div></div>
+        </div>
+        <div class="wa-stat s-done">
+            <div class="wa-stat-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div><div class="wa-stat-num" id="statDone">—</div><div class="wa-stat-lbl">Completed</div></div>
+        </div>
+        <div class="wa-stat s-avg">
+            <div class="wa-stat-icon"><i class="fas fa-clock"></i></div>
+            <div><div class="wa-stat-num" id="statAvg">—</div><div class="wa-stat-lbl">Avg Wait (min)</div></div>
+        </div>
+    </div>
+
+    <!-- Kanban board -->
+    <div class="kanban-board">
+        <!-- Waiting column -->
+        <div class="kanban-col">
+            <div class="kanban-col-header">
+                <div class="col-title"><span class="col-dot blue"></span>Waiting</div>
+                <span class="col-count" id="colWaitingCount">0</span>
+            </div>
+            <div class="kanban-col-body" id="colWaiting">
+                <div class="col-loading"><i class="fas fa-spinner fa-spin"></i>Loading...</div>
+            </div>
+        </div>
+        <!-- In Progress column -->
+        <div class="kanban-col">
+            <div class="kanban-col-header">
+                <div class="col-title"><span class="col-dot orange"></span>In Progress</div>
+                <span class="col-count" id="colProgressCount">0</span>
+            </div>
+            <div class="kanban-col-body" id="colProgress">
+                <div class="col-loading"><i class="fas fa-spinner fa-spin"></i>Loading...</div>
+            </div>
+        </div>
+        <!-- Done column -->
+        <div class="kanban-col">
+            <div class="kanban-col-header">
+                <div class="col-title"><span class="col-dot green"></span>Completed</div>
+                <span class="col-count" id="colDoneCount">0</span>
+            </div>
+            <div class="kanban-col-body" id="colDone">
+                <div class="col-loading"><i class="fas fa-spinner fa-spin"></i>Loading...</div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0 text-purple-900">
-                        <i class="fas fa-user-md text-purple-600 me-2"></i>
-                        My Waiting Area
-                    </h1>
-                    <p class="text-muted mb-0">Manage your patient appointments and track wait times</p>
-                </div>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-outline-purple" onclick="refreshWaitingList()">
-                        <i class="fas fa-sync-alt me-1"></i> Refresh
-                    </button>
-                    <button type="button" class="btn btn-outline-purple" onclick="showStats()">
-                        <i class="fas fa-chart-bar me-1"></i> Statistics
-                    </button>
-                    <button type="button" class="btn btn-purple" onclick="manualCleanup()">
-                        <i class="fas fa-broom me-1"></i> Cleanup Completed
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Alert for Long Waits -->
-    <div id="longWaitAlert" class="alert alert-warning alert-dismissible fade show d-none" role="alert">
-        <div class="d-flex align-items-center">
-            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-            <div>
-                <strong>Long Wait Alert:</strong> You have patients waiting for more than 1 hour!
-                <button type="button" class="btn-close ms-2" onclick="dismissAlert()" aria-label="Close"></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Waiting List -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-purple-50 border-purple-200">
-                    <h5 class="card-title mb-0 text-purple-900">
-                        <i class="fas fa-list text-purple-600 me-2"></i> 
-                        Patient Waiting List
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="waitingListContainer">
-                        <div class="text-center py-5">
-                            <div class="loading-state">
-                                <i class="fas fa-spinner fa-spin fa-2x text-purple-400 mb-3"></i>
-                                <p class="text-purple-700">Loading waiting list...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Start Appointment Modal -->
-<div class="modal fade" id="startAppointmentModal" tabindex="-1" aria-labelledby="startAppointmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-purple-50 border-purple-200">
-                <h5 class="modal-title text-purple-900" id="startAppointmentModalLabel">
-                    <i class="fas fa-play-circle text-purple-600 me-2"></i>
-                    Start Appointment
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade" id="startAppointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-play-circle me-2 text-purple-600"></i>Start Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to start the appointment with <strong id="startPatientName" class="text-purple-900"></strong>?</p>
-                <p class="text-muted">This will move the patient from waiting to in-progress status.</p>
+            <div class="modal-body py-2" style="font-size:.9rem;">
+                Start appointment with <strong id="startPatientName"></strong>?
+                <p class="text-muted mb-0 mt-1" style="font-size:.8rem;">Patient will move to In Progress.</p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="startAppointmentForm" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-purple">
-                        <i class="fas fa-play me-1"></i> Start Appointment
-                    </button>
+            <div class="modal-footer border-0 pt-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="startAppointmentForm" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-play me-1"></i>Start</button>
                 </form>
             </div>
         </div>
@@ -104,697 +287,217 @@
 </div>
 
 <!-- Complete Appointment Modal -->
-<div class="modal fade" id="completeAppointmentModal" tabindex="-1" aria-labelledby="completeAppointmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success-50 border-success-200">
-                <h5 class="modal-title text-success-900" id="completeAppointmentModalLabel">
-                    <i class="fas fa-check-circle text-success-600 me-2"></i>
-                    Complete Appointment
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade" id="completeAppointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-check-circle me-2 text-success"></i>Complete Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="completeAppointmentForm" method="POST">
-                <div class="modal-body">
-                    <p>Complete appointment with <strong id="completePatientName" class="text-purple-900"></strong>?</p>
-                    <div class="mb-3">
-                        <label for="doctorNotes" class="form-label text-purple-700">Doctor Notes</label>
-                        <textarea class="form-control" name="doctor_notes" id="doctorNotes" rows="3" 
-                                  placeholder="Add any notes about the appointment..."></textarea>
-                    </div>
+                <div class="modal-body pt-2">
+                    <p style="font-size:.9rem;">Complete appointment with <strong id="completePatientName"></strong>?</p>
+                    <label class="form-label">Doctor Notes <span class="text-muted fw-normal">(optional)</span></label>
+                    <textarea class="form-control" name="doctor_notes" rows="2" placeholder="Summary of visit..."></textarea>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check me-1"></i> Complete Appointment
-                    </button>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>Complete</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Statistics Modal -->
-<div class="modal fade" id="statsModal" tabindex="-1" aria-labelledby="statsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-purple-50 border-purple-200">
-                <h5 class="modal-title text-purple-900" id="statsModalLabel">
-                    <i class="fas fa-chart-bar text-purple-600 me-2"></i>
-                    Waiting Area Statistics
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Stats Modal -->
+<div class="modal fade" id="statsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-chart-bar me-2 text-purple-600"></i>Today's Stats</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="stat-card stat-waiting">
-                            <div class="card-body text-center">
-                                <div class="stat-icon mx-auto mb-2">
-                                    <i class="fas fa-hourglass-half"></i>
-                                </div>
-                                <h3 class="card-title mb-1" id="statsTotalWaiting">0</h3>
-                                <p class="card-text mb-0">Total Waiting</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="stat-card stat-progress">
-                            <div class="card-body text-center">
-                                <div class="stat-icon mx-auto mb-2">
-                                    <i class="fas fa-stethoscope"></i>
-                                </div>
-                                <h3 class="card-title mb-1" id="statsInProgress">0</h3>
-                                <p class="card-text mb-0">In Progress</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <div class="stat-card stat-completed">
-                            <div class="card-body text-center">
-                                <div class="stat-icon mx-auto mb-2">
-                                    <i class="fas fa-clipboard-check"></i>
-                                </div>
-                                <h3 class="card-title mb-1" id="statsCompleted">0</h3>
-                                <p class="card-text mb-0">Completed Today</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="stat-card stat-info">
-                            <div class="card-body text-center">
-                                <div class="stat-icon mx-auto mb-2">
-                                    <i class="fas fa-stopwatch"></i>
-                                </div>
-                                <h3 class="card-title mb-1" id="statsAvgWait">0</h3>
-                                <p class="card-text mb-0">Avg Wait Time (min)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div id="longWaitPatients" class="mt-4">
-                    <!-- Long wait patients will be populated here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            <div class="modal-body" id="statsModalBody">Loading...</div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-/* Custom styles for doctor waiting area */
-.stat-card {
-    border: none;
-    border-radius: 1rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--purple-600), var(--purple-700));
-}
-
-.stat-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.stat-card:hover .stat-icon {
-    transform: scale(1.1) rotate(5deg);
-    transition: all 0.3s ease;
-}
-
-.stat-waiting:hover {
-    box-shadow: 0 15px 35px rgba(2, 136, 209, 0.2);
-}
-
-.stat-progress:hover {
-    box-shadow: 0 15px 35px rgba(255, 152, 0, 0.2);
-}
-
-.stat-completed:hover {
-    box-shadow: 0 15px 35px rgba(76, 175, 80, 0.2);
-}
-
-.stat-info:hover {
-    box-shadow: 0 15px 35px rgba(244, 67, 54, 0.2);
-}
-
-.stat-waiting {
-    background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
-    border-left: 4px solid #0288d1;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(2, 136, 209, 0.1);
-}
-
-.stat-progress {
-    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-    border-left: 4px solid #ff9800;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.1);
-}
-
-.stat-completed {
-    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-    border-left: 4px solid #4caf50;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.1);
-}
-
-.stat-info {
-    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-    border-left: 4px solid #f44336;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.1);
-}
-
-.stat-icon {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.75rem;
-    color: white;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-icon::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-    border-radius: 50%;
-}
-
-.stat-waiting .stat-icon {
-    background: linear-gradient(135deg, #0288d1, #0277bd);
-    box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
-}
-
-.stat-progress .stat-icon {
-    background: linear-gradient(135deg, #ff9800, #f57c00);
-    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
-}
-
-.stat-completed .stat-icon {
-    background: linear-gradient(135deg, #4caf50, #388e3c);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.stat-info .stat-icon {
-    background: linear-gradient(135deg, #f44336, #d32f2f);
-    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-}
-
-.waiting-table {
-    background: white;
-    border-radius: 1rem;
-    overflow: hidden;
-}
-
-.waiting-table th {
-    background-color: var(--purple-50);
-    color: var(--purple-900);
-    font-weight: 600;
-    border-bottom: 2px solid var(--purple-100);
-    padding: 1rem;
-}
-
-.waiting-table td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.waiting-row {
-    transition: all 0.2s ease;
-}
-
-.waiting-row:hover {
-    background-color: var(--purple-50);
-}
-
-.waiting-warning {
-    background-color: #fef3c7;
-}
-
-.waiting-urgent {
-    background-color: #fee2e2;
-}
-
-.time-badge {
-    background: var(--purple-100);
-    color: var(--purple-700);
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.wait-time-badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.wait-time-badge.normal {
-    background: var(--purple-100);
-    color: var(--purple-700);
-}
-
-.wait-time-badge.warning {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.wait-time-badge.urgent {
-    background: #fee2e2;
-    color: #dc2626;
-}
-
-.status-badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.status-waiting {
-    background: var(--purple-100);
-    color: var(--purple-700);
-}
-
-.status-in_progress {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.priority-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-.priority-urgent {
-    background: #fee2e2;
-    color: #dc2626;
-}
-
-.priority-high {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.priority-normal {
-    background: var(--purple-100);
-    color: var(--purple-700);
-}
-
-.priority-low {
-    background: #f3f4f6;
-    color: #6b7280;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 0.25rem;
-}
-
-.loading-state, .empty-state {
-    padding: 2rem;
-}
-
-.doctor-name {
-    color: var(--purple-700);
-    font-weight: 500;
-}
-
-.patient-info strong {
-    color: var(--purple-900);
-}
-
-/* Button styles */
-.btn-purple {
-    background: linear-gradient(135deg, var(--purple-600), var(--purple-700));
-    border: none;
-    color: white;
-    transition: all 0.3s ease;
-}
-
-.btn-purple:hover {
-    background: linear-gradient(135deg, var(--purple-700), var(--purple-800));
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-    color: white;
-}
-
-.btn-outline-purple {
-    border: 2px solid var(--purple-600);
-    color: var(--purple-600);
-    background: transparent;
-    transition: all 0.3s ease;
-}
-
-.btn-outline-purple:hover {
-    background: var(--purple-600);
-    color: white;
-    transform: translateY(-1px);
-}
-
-/* Modal styles */
-.modal-header.bg-purple-50 {
-    background-color: var(--purple-50) !important;
-}
-
-.bg-success-50 {
-    background-color: #f0fdf4 !important;
-}
-
-.border-success-200 {
-    border-color: #bbf7d0 !important;
-}
-
-.text-success-900 {
-    color: #14532d !important;
-}
-
-.text-success-600 {
-    color: #16a34a !important;
-}
-
-.border-purple-200 {
-    border-color: var(--purple-200) !important;
-}
-
-.text-purple-900 {
-    color: var(--purple-900) !important;
-}
-
-.text-purple-700 {
-    color: var(--purple-700) !important;
-}
-
-.text-purple-600 {
-    color: var(--purple-600) !important;
-}
-
-/* Alert styles */
-.alert-warning {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 1px solid #f59e0b;
-    color: #92400e;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .stat-card .card-body {
-        padding: 1rem;
-    }
-    
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.25rem;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-        gap: 0.125rem;
-    }
-    
-    .waiting-table th,
-    .waiting-table td {
-        padding: 0.75rem 0.5rem;
-    }
-}
-</style>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
+function priChipClass(p) {
+    return { urgent:'c-pri-urgent', high:'c-pri-high', normal:'c-pri-normal', low:'c-pri-low' }[p] || 'c-pri-normal';
+}
+function wtClass(entry) {
+    return entry.is_very_long_wait ? 'c-wt-u' : entry.is_long_wait ? 'c-wt-w' : 'c-wt-ok';
+}
+function cardClass(entry) {
+    const pri = 'p-' + (entry.priority || 'normal');
+    const warn = entry.is_very_long_wait ? 'warn-urgent' : entry.is_long_wait ? 'warn-long' : '';
+    return [pri, warn].filter(Boolean).join(' ');
+}
+function initials(name) {
+    return (name || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+function escAttr(s) {
+    return (s||'').replace(/'/g,"\\'").replace(/"/g,"&quot;");
+}
+
+function renderCard(entry, status) {
+    const wtCls = wtClass(entry);
+    const priChip = `<span class="chip ${priChipClass(entry.priority)}">${(entry.priority||'normal').toUpperCase()}</span>`;
+
+    let actionBtn = '';
+    if (status === 'waiting') {
+        actionBtn = `<button class="btn btn-xs btn-primary" onclick="startAppointment(${entry.id},'${escAttr(entry.patient_name)}')">
+                        <i class="fas fa-play me-1"></i>Start
+                     </button>`;
+    } else if (status === 'in_progress') {
+        actionBtn = `<button class="btn btn-xs btn-success" onclick="completeAppointment(${entry.id},'${escAttr(entry.patient_name)}')">
+                        <i class="fas fa-check me-1"></i>Complete
+                     </button>`;
+    }
+
+    const opacity = status === 'completed' ? 'style="opacity:.75"' : '';
+    return `
+        <div class="pt-card ${cardClass(entry)}" ${opacity}>
+            <div class="pt-top">
+                <div class="pt-avatar">${initials(entry.patient_name)}</div>
+                <div>
+                    <div class="pt-name">${entry.patient_name}</div>
+                    <div class="pt-id">#${entry.patient_number}</div>
+                </div>
+            </div>
+            <div class="pt-chips">
+                <span class="chip c-time"><i class="fas fa-sign-in-alt"></i>${entry.check_in_time}</span>
+                <span class="chip c-exp"><i class="fas fa-calendar-alt"></i>${entry.expected_time}</span>
+                <span class="chip ${wtCls}"><i class="fas fa-hourglass-half"></i>${entry.wait_time} min</span>
+                ${priChip}
+            </div>
+            ${actionBtn ? `<div class="pt-actions">${actionBtn}</div>` : ''}
+        </div>`;
+}
+
 function refreshWaitingList() {
     fetch('/waiting-area/api/doctor-waiting-list')
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            const container = document.getElementById('waitingListContainer');
-            
-            if (data.waiting_list.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center text-muted py-5">
-                        <div class="empty-state">
-                            <i class="fas fa-users fa-4x text-purple-200 mb-3"></i>
-                            <h5 class="text-purple-700">No patients in waiting area</h5>
-                            <p class="text-muted">All patients have been seen or no appointments are scheduled</p>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = `
-                <div class="table-responsive">
-                    <table class="table waiting-table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th class="text-purple-700">Check-in</th>
-                                <th class="text-purple-700">Patient</th>
-                                <th class="text-purple-700">Expected</th>
-                                <th class="text-purple-700">Wait Time</th>
-                                <th class="text-purple-700">Priority</th>
-                                <th class="text-purple-700">Status</th>
-                                <th class="text-purple-700">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            let hasLongWaits = false;
-            
-            data.waiting_list.forEach(entry => {
-                const rowClass = entry.is_very_long_wait ? 'waiting-urgent' : 
-                               entry.is_long_wait ? 'waiting-warning' : '';
-                
-                if (entry.is_long_wait) hasLongWaits = true;
-                
-                html += `
-                    <tr class="waiting-row ${rowClass}">
-                        <td>
-                            <span class="time-badge">${entry.check_in_time}</span>
-                        </td>
-                        <td>
-                            <div class="patient-info">
-                                <strong class="text-purple-900">${entry.patient_name}</strong>
-                                <br>
-                                <small class="text-muted">${entry.patient_number}</small>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="time-badge">${entry.expected_time}</span>
-                        </td>
-                        <td>
-                            <span class="wait-time-badge ${entry.is_very_long_wait ? 'urgent' : 
-                               entry.is_long_wait ? 'warning' : 'normal'}">
-                                ${entry.wait_time} min
-                            </span>
-                        </td>
-                        <td>
-                            <span class="priority-badge priority-${entry.priority}">
-                                ${entry.priority.toUpperCase()}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="status-badge status-${entry.status}">
-                                ${entry.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                `;
-                
-                if (entry.status === 'waiting') {
-                    html += `
-                        <button class="btn btn-sm btn-purple" onclick="startAppointment(${entry.id}, '${entry.patient_name}')" title="Start Appointment">
-                            <i class="fas fa-play"></i> Start
-                        </button>
-                    `;
-                } else if (entry.status === 'in_progress') {
-                    html += `
-                        <button class="btn btn-sm btn-success" onclick="completeAppointment(${entry.id}, '${entry.patient_name}')" title="Complete Appointment">
-                            <i class="fas fa-check"></i> Complete
-                        </button>
-                    `;
-                }
-                
-                html += `
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            const list = data.waiting_list || [];
+            const byStatus = { waiting: [], in_progress: [], completed: [] };
+            let hasLongWait = false;
+
+            list.forEach(e => {
+                const s = e.status || 'waiting';
+                if (byStatus[s]) byStatus[s].push(e);
+                if (e.is_long_wait) hasLongWait = true;
             });
-            
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
-            container.innerHTML = html;
-            
-            // Show/hide long wait alert
+
+            // Render each column
+            const cols = {
+                waiting:     { el: document.getElementById('colWaiting'),  cnt: document.getElementById('colWaitingCount') },
+                in_progress: { el: document.getElementById('colProgress'), cnt: document.getElementById('colProgressCount') },
+                completed:   { el: document.getElementById('colDone'),     cnt: document.getElementById('colDoneCount') }
+            };
+
+            Object.entries(cols).forEach(([status, { el, cnt }]) => {
+                const entries = byStatus[status];
+                cnt.textContent = entries.length;
+                if (entries.length === 0) {
+                    const labels = { waiting: 'No patients waiting', in_progress: 'No active appointments', completed: 'None completed yet' };
+                    const icons  = { waiting: 'fa-users', in_progress: 'fa-stethoscope', completed: 'fa-clipboard-check' };
+                    el.innerHTML = `<div class="col-empty"><i class="fas ${icons[status]}"></i>${labels[status]}</div>`;
+                } else {
+                    el.innerHTML = entries.map(e => renderCard(e, status)).join('');
+                }
+            });
+
+            // Long wait alert
             const alert = document.getElementById('longWaitAlert');
-            if (hasLongWaits) {
+            if (hasLongWait) {
+                alert.style.removeProperty('display');
                 alert.classList.remove('d-none');
             } else {
                 alert.classList.add('d-none');
             }
         })
-        .catch(error => {
-            console.error('Error fetching waiting list:', error);
-            document.getElementById('waitingListContainer').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Error loading waiting list. Please try again.
-                </div>
-            `;
+        .catch(() => {
+            ['colWaiting','colProgress','colDone'].forEach(id => {
+                document.getElementById(id).innerHTML =
+                    `<div class="col-empty"><i class="fas fa-exclamation-triangle"></i>Error loading. Retry?</div>`;
+            });
         });
 }
 
-function startAppointment(entryId, patientName) {
-    document.getElementById('startPatientName').textContent = patientName;
-    document.getElementById('startAppointmentForm').action = `/waiting-area/doctor/start-appointment/${entryId}`;
-    
-    // Use Bootstrap 5 modal API
-    const modal = new bootstrap.Modal(document.getElementById('startAppointmentModal'));
-    modal.show();
+function startAppointment(id, name) {
+    document.getElementById('startPatientName').textContent = name;
+    document.getElementById('startAppointmentForm').action  = `/waiting-area/doctor/start-appointment/${id}`;
+    new bootstrap.Modal(document.getElementById('startAppointmentModal')).show();
 }
-
-function completeAppointment(entryId, patientName) {
-    document.getElementById('completePatientName').textContent = patientName;
-    document.getElementById('completeAppointmentForm').action = `/waiting-area/doctor/complete-appointment/${entryId}`;
-    
-    // Use Bootstrap 5 modal API
-    const modal = new bootstrap.Modal(document.getElementById('completeAppointmentModal'));
-    modal.show();
+function completeAppointment(id, name) {
+    document.getElementById('completePatientName').textContent = name;
+    document.getElementById('completeAppointmentForm').action  = `/waiting-area/doctor/complete-appointment/${id}`;
+    new bootstrap.Modal(document.getElementById('completeAppointmentModal')).show();
 }
 
 function showStats() {
     fetch('/waiting-area/api/waiting-stats')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('statsTotalWaiting').textContent = data.total_waiting;
-            document.getElementById('statsInProgress').textContent = data.total_in_progress;
-            document.getElementById('statsCompleted').textContent = data.total_completed;
-            document.getElementById('statsAvgWait').textContent = data.average_wait_time;
-            
-            const longWaitContainer = document.getElementById('longWaitPatients');
-            if (data.long_wait_patients.length > 0) {
-                let html = `
-                    <div class="card border-warning">
-                        <div class="card-header bg-warning-50 border-warning-200">
-                            <h6 class="mb-0 text-warning-900">
-                                <i class="fas fa-exclamation-triangle text-warning-600 me-2"></i>
-                                Patients Waiting > 1 Hour
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="list-group list-group-flush">
-                `;
-                data.long_wait_patients.forEach(patient => {
-                    html += `
-                        <div class="list-group-item d-flex justify-content-between align-items-center border-0">
-                            <div>
-                                <strong class="text-purple-900">${patient.patient_name}</strong>
-                                <br>
-                                <small class="text-muted">${patient.doctor_name}</small>
-                            </div>
-                            <span class="badge bg-warning text-dark">${patient.wait_time} min</span>
-                        </div>
-                    `;
-                });
-                html += `
-                            </div>
-                        </div>
-                    </div>
-                `;
-                longWaitContainer.innerHTML = html;
-            } else {
-                longWaitContainer.innerHTML = `
-                    <div class="text-center text-muted py-3">
-                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                        <p class="mb-0">No patients waiting for more than 1 hour.</p>
-                    </div>
-                `;
-            }
-            
-            // Use Bootstrap 5 modal API
-            const modal = new bootstrap.Modal(document.getElementById('statsModal'));
-            modal.show();
-        })
-        .catch(error => console.error('Error fetching stats:', error));
-}
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('statWaiting').textContent = d.total_waiting;
+            document.getElementById('statProgress').textContent= d.total_in_progress;
+            document.getElementById('statDone').textContent    = d.total_completed;
+            document.getElementById('statAvg').textContent     = d.average_wait_time;
 
-function dismissAlert() {
-    document.getElementById('longWaitAlert').classList.add('d-none');
+            let body = `<div class="row g-3 mb-3">
+                <div class="col-6"><div class="card border-0 bg-light text-center p-3">
+                    <div style="font-size:1.8rem;font-weight:700;color:#1d4ed8;">${d.total_waiting}</div>
+                    <div class="text-muted" style="font-size:.8rem;">Waiting</div></div></div>
+                <div class="col-6"><div class="card border-0 bg-light text-center p-3">
+                    <div style="font-size:1.8rem;font-weight:700;color:#166534;">${d.total_completed}</div>
+                    <div class="text-muted" style="font-size:.8rem;">Completed</div></div></div>
+            </div>`;
+
+            if (d.long_wait_patients && d.long_wait_patients.length) {
+                body += `<div class="card border-warning">
+                    <div class="card-header" style="background:#fef9c3;font-size:.82rem;font-weight:700;color:#92400e;">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Waiting &gt;1 Hour
+                    </div>
+                    <ul class="list-group list-group-flush">`;
+                d.long_wait_patients.forEach(p => {
+                    body += `<li class="list-group-item d-flex justify-content-between" style="font-size:.85rem;">
+                        <span>${p.patient_name}</span>
+                        <span class="badge" style="background:#fef9c3;color:#92400e;">${p.wait_time} min</span>
+                    </li>`;
+                });
+                body += `</ul></div>`;
+            } else {
+                body += `<div class="text-center text-muted py-2" style="font-size:.85rem;">
+                    <i class="fas fa-check-circle text-success me-1"></i>No long waits — great pace!
+                </div>`;
+            }
+            document.getElementById('statsModalBody').innerHTML = body;
+            new bootstrap.Modal(document.getElementById('statsModal')).show();
+        });
 }
 
 function manualCleanup() {
-    if (confirm('This will automatically remove completed appointments from the waiting area. Continue?')) {
-        fetch('/waiting-area/api/cleanup-completed', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show notification
-                document.getElementById('cleanup-message').textContent = data.message;
-                document.getElementById('cleanup-notification').style.display = 'block';
-                
-                // Refresh the waiting list after a short delay
-                setTimeout(() => {
-                    refreshWaitingList();
-                }, 2000);
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error during cleanup:', error);
-            alert('Error during cleanup. Please try again.');
-        });
-    }
+    if (!confirm('Remove completed appointments from the waiting area?')) return;
+    fetch('/waiting-area/api/cleanup-completed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+                   'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { setTimeout(() => refreshWaitingList(), 500); }
+        else { alert('Error: ' + d.error); }
+    });
 }
 
-// Auto-refresh every 30 seconds
 setInterval(refreshWaitingList, 30000);
-
-// Initial load
-document.addEventListener('DOMContentLoaded', function() {
-    refreshWaitingList();
-});
+document.addEventListener('DOMContentLoaded', refreshWaitingList);
 </script>
-{% endblock %} 
+{% endblock %}

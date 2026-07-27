@@ -1,309 +1,484 @@
 {% extends "base.html" %}
+{% block title %}Waiting Area — Receptionist{% endblock %}
+{% block header_title %}Waiting Area{% endblock %}
 
-{% block title %}Waiting Area - Receptionist{% endblock %}
+{% block extra_css %}
+<style>
+/* ── Stat strip ───────────────────────────────────────── */
+.wa-stats {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+.wa-stat {
+    flex: 1;
+    min-width: 130px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: .75rem;
+    padding: .85rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.wa-stat-icon {
+    width: 40px; height: 40px;
+    border-radius: .5rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+}
+.wa-stat-num  { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+.wa-stat-lbl  { font-size: .75rem; color: #6b7280; font-weight: 500; margin-top: 2px; }
+
+.wa-stat.s-wait    .wa-stat-icon { background: #dbeafe; color: #1d4ed8; }
+.wa-stat.s-prog    .wa-stat-icon { background: #fef9c3; color: #92400e; }
+.wa-stat.s-done    .wa-stat-icon { background: #dcfce7; color: #166534; }
+.wa-stat.s-alert   .wa-stat-icon { background: #fee2e2; color: #b91c1c; }
+.wa-stat.s-wait    .wa-stat-num  { color: #1d4ed8; }
+.wa-stat.s-prog    .wa-stat-num  { color: #92400e; }
+.wa-stat.s-done    .wa-stat-num  { color: #166534; }
+.wa-stat.s-alert   .wa-stat-num  { color: #b91c1c; }
+
+/* ── Board layout ─────────────────────────────────────── */
+.wa-board {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 1rem;
+    align-items: start;
+}
+@media (max-width: 991px) { .wa-board { grid-template-columns: 1fr; } }
+
+/* ── Column ───────────────────────────────────────────── */
+.wa-col {
+    background: #f8f9fc;
+    border: 1px solid #e9ecef;
+    border-radius: .875rem;
+    overflow: hidden;
+}
+.wa-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .8rem 1rem;
+    background: #fff;
+    border-bottom: 2px solid #e9ecef;
+}
+.wa-col-title {
+    font-size: .875rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.col-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.col-dot.blue   { background: #3b82f6; }
+.col-dot.orange { background: #f59e0b; }
+.col-dot.green  { background: #22c55e; }
+.col-dot.purple { background: var(--p600); }
+
+.wa-col-count {
+    font-size: .75rem;
+    font-weight: 700;
+    background: #f3f4f6;
+    color: #374151;
+    padding: .18rem .55rem;
+    border-radius: 9999px;
+    min-width: 24px;
+    text-align: center;
+}
+.wa-col-body { padding: .75rem; display: flex; flex-direction: column; gap: .5rem; min-height: 80px; }
+
+/* ── Kanban card ──────────────────────────────────────── */
+.wa-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: .625rem;
+    padding: .75rem .9rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    transition: box-shadow .18s, transform .18s;
+    position: relative;
+    border-left: 3px solid transparent;
+}
+.wa-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); transform: translateY(-1px); }
+
+/* priority left border */
+.wa-card.p-urgent { border-left-color: #ef4444; }
+.wa-card.p-high   { border-left-color: #f59e0b; }
+.wa-card.p-normal { border-left-color: var(--p500); }
+.wa-card.p-low    { border-left-color: #d1d5db; }
+
+/* Row highlight */
+.wa-card.warn-long  { background: #fffbeb; }
+.wa-card.warn-urgent{ background: #fff5f5; }
+
+.wa-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .4rem;
+}
+.wa-patient-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--p400), var(--p600));
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.wa-patient-name  { font-size: .875rem; font-weight: 600; line-height: 1.2; }
+.wa-patient-id    { font-size: .72rem; color: #9ca3af; }
+
+.wa-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-bottom: .55rem;
+}
+.wa-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .72rem;
+    font-weight: 500;
+    padding: .2rem .5rem;
+    border-radius: .375rem;
+    background: #f3f4f6;
+    color: #374151;
+}
+.wa-chip.chip-time   { background: var(--p50); color: var(--p700); }
+.wa-chip.chip-doctor { background: #f0fdf4; color: #166534; }
+.wa-chip.chip-wait-ok     { background: #dcfce7; color: #166534; }
+.wa-chip.chip-wait-warn   { background: #fef9c3; color: #92400e; }
+.wa-chip.chip-wait-urgent { background: #fee2e2; color: #b91c1c; }
+
+.wa-card-actions { display: flex; gap: .35rem; justify-content: flex-end; }
+
+/* Scheduled list card (left column) */
+.sched-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: .625rem;
+    padding: .65rem .9rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    transition: box-shadow .18s;
+}
+.sched-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,.09); }
+.sched-time-chip {
+    background: var(--p50);
+    color: var(--p700);
+    font-size: .78rem;
+    font-weight: 700;
+    padding: .3rem .55rem;
+    border-radius: .375rem;
+    min-width: 48px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.sched-info { flex: 1; min-width: 0; }
+.sched-name { font-size: .86rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sched-sub  { font-size: .73rem; color: #9ca3af; }
+
+/* Live indicator */
+.live-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
+    50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+}
+
+/* Empty state */
+.wa-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #9ca3af;
+    font-size: .85rem;
+}
+.wa-empty i { display: block; font-size: 1.75rem; margin-bottom: .5rem; opacity: .4; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Notification Area for Auto-cleanup -->
-    <div class="row mb-3" id="cleanup-notification" style="display: none;">
-        <div class="col-12">
-            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                <i class="fas fa-info-circle"></i>
-                <span id="cleanup-message"></span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+
+    <!-- Notification -->
+    <div id="cleanup-notification" style="display:none;" class="mb-3">
+        <div class="flash-item flash-success d-flex align-items-center justify-content-between">
+            <span><i class="fas fa-check-circle me-2"></i><span id="cleanup-message"></span></span>
+            <button class="btn-close btn-close-sm" onclick="this.closest('#cleanup-notification').style.display='none'"></button>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0 text-purple-900">
-                        <i class="fas fa-clock text-purple-600 me-2"></i>
-                        Waiting Area Management
-                    </h1>
-                    <p class="text-muted mb-0">Manage patient flow and track wait times</p>
-                </div>
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-outline-purple" onclick="refreshStats()">
-                        <i class="fas fa-sync-alt me-1"></i> Refresh Stats
-                    </button>
-                    <button type="button" class="btn btn-purple" onclick="manualCleanup()">
-                        <i class="fas fa-broom me-1"></i> Cleanup Completed
-                    </button>
-                </div>
-            </div>
+    <!-- Top action bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="live-dot"></span>
+            <span class="text-muted" style="font-size:.8rem;">Live · auto-refreshes every 30s</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshStats()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="manualCleanup()">
+                <i class="fas fa-broom me-1"></i>Cleanup Done
+            </button>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stat-card stat-waiting">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="card-title mb-1" id="total-waiting">0</h2>
-                            <p class="card-text mb-0">Waiting</p>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Stat strip -->
+    <div class="wa-stats">
+        <div class="wa-stat s-wait">
+            <div class="wa-stat-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div><div class="wa-stat-num" id="total-waiting">0</div><div class="wa-stat-lbl">Waiting</div></div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stat-card stat-progress">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="card-title mb-1" id="total-in-progress">0</h2>
-                            <p class="card-text mb-0">In Progress</p>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="fas fa-stethoscope"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="wa-stat s-prog">
+            <div class="wa-stat-icon"><i class="fas fa-stethoscope"></i></div>
+            <div><div class="wa-stat-num" id="total-in-progress">0</div><div class="wa-stat-lbl">In Progress</div></div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stat-card stat-completed">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="card-title mb-1" id="total-completed">0</h2>
-                            <p class="card-text mb-0">Completed</p>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="fas fa-clipboard-check"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="wa-stat s-done">
+            <div class="wa-stat-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div><div class="wa-stat-num" id="total-completed">0</div><div class="wa-stat-lbl">Completed</div></div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stat-card stat-alert">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="card-title mb-1" id="long-waits">0</h2>
-                            <p class="card-text mb-0">Long Waits (>1hr)</p>
-                        </div>
-                        <div class="stat-icon">
-                            <i class="fas fa-stopwatch"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="wa-stat s-alert">
+            <div class="wa-stat-icon"><i class="fas fa-stopwatch"></i></div>
+            <div><div class="wa-stat-num" id="long-waits">0</div><div class="wa-stat-lbl">Long Waits (&gt;1hr)</div></div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Scheduled Appointments -->
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header bg-purple-50 border-purple-200">
-                    <h5 class="card-title mb-0 text-purple-900">
-                        <i class="fas fa-calendar-check text-purple-600 me-2"></i> 
-                        Today's Scheduled Appointments
-                    </h5>
+    <!-- Board -->
+    <div class="wa-board">
+
+        <!-- Left: Scheduled appointments -->
+        <div class="wa-col">
+            <div class="wa-col-header">
+                <div class="wa-col-title">
+                    <span class="col-dot purple"></span>
+                    Today's Schedule
                 </div>
-                <div class="card-body">
-                    {% if scheduled_appointments %}
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th class="text-purple-700">Time</th>
-                                        <th class="text-purple-700">Patient</th>
-                                        <th class="text-purple-700">Doctor</th>
-                                        <th class="text-purple-700">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for appointment in scheduled_appointments %}
-                                    <tr class="appointment-row">
-                                        <td>
-                                            <span class="time-badge">{{ appointment.datetime.strftime('%H:%M') }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="patient-info">
-                                                <strong class="text-purple-900">{{ appointment.patient.name }}</strong>
-                                                <br>
-                                                <small class="text-muted">{{ appointment.patient.patient_number }}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="doctor-name">{{ appointment.doctor.user.name }}</span>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-purple" 
-                                                    onclick="showAddToWaitingModal({{ appointment.id }}, '{{ appointment.patient.name|replace("'", "\\'")|replace('"', '\\"') }}')">
-                                                <i class="fas fa-plus me-1"></i> Add to Waiting
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                <span class="wa-col-count">{{ scheduled_appointments|length }}</span>
+            </div>
+            <div class="wa-col-body">
+                {% if scheduled_appointments %}
+                    {% for appt in scheduled_appointments %}
+                    <div class="sched-card">
+                        <div class="sched-time-chip">{{ appt.datetime.strftime('%H:%M') }}</div>
+                        <div class="sched-info">
+                            <div class="sched-name">{{ appt.patient.name }}</div>
+                            <div class="sched-sub">Dr. {{ appt.doctor.user.name }} · #{{ appt.patient.patient_number }}</div>
                         </div>
-                    {% else %}
-                        <div class="text-center text-muted py-5">
-                            <div class="empty-state">
-                                <i class="fas fa-calendar-times fa-4x text-purple-200 mb-3"></i>
-                                <h5 class="text-purple-700">No scheduled appointments</h5>
-                                <p class="text-muted">There are no appointments scheduled for today</p>
+                        <button class="btn btn-xs btn-primary"
+                                onclick="showAddToWaitingModal({{ appt.id }}, '{{ appt.patient.name|replace("'","\\'")|replace('"','\\"') }}')">
+                            <i class="fas fa-plus me-1"></i>Add
+                        </button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="wa-empty">
+                    <i class="fas fa-calendar-times"></i>
+                    No scheduled appointments today
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right: Active waiting area as Kanban-like lanes -->
+        <div>
+            {% set waiting   = waiting_entries | selectattr('status','equalto','waiting')     | list %}
+            {% set progress  = waiting_entries | selectattr('status','equalto','in_progress') | list %}
+            {% set completed = waiting_entries | selectattr('status','equalto','completed')   | list %}
+
+            <!-- Waiting column -->
+            <div class="wa-col mb-3">
+                <div class="wa-col-header">
+                    <div class="wa-col-title"><span class="col-dot blue"></span>Waiting</div>
+                    <span class="wa-col-count">{{ waiting|length }}</span>
+                </div>
+                <div class="wa-col-body">
+                    {% if waiting %}
+                    {% for entry in waiting %}
+                    {% set wt = entry.calculate_wait_time() %}
+                    <div class="wa-card p-{{ entry.priority }} {{ 'warn-urgent' if entry.is_very_long_wait() else 'warn-long' if entry.is_long_wait() else '' }}">
+                        <div class="wa-card-top">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="wa-patient-avatar">{{ entry.patient.name[:2].upper() }}</div>
+                                <div>
+                                    <div class="wa-patient-name">{{ entry.patient.name }}</div>
+                                    <div class="wa-patient-id">#{{ entry.patient.patient_number }}</div>
+                                </div>
                             </div>
                         </div>
+                        <div class="wa-card-meta">
+                            <span class="wa-chip chip-time"><i class="fas fa-clock"></i>{{ entry.check_in_time.strftime('%H:%M') }}</span>
+                            <span class="wa-chip chip-doctor"><i class="fas fa-user-md"></i>Dr. {{ entry.doctor.user.name }}</span>
+                            <span class="wa-chip {{ 'chip-wait-urgent' if entry.is_very_long_wait() else 'chip-wait-warn' if entry.is_long_wait() else 'chip-wait-ok' }}">
+                                <i class="fas fa-hourglass-half"></i>{{ wt }} min
+                            </span>
+                        </div>
+                        <div class="wa-card-actions">
+                            <button class="btn btn-xs btn-outline-secondary"
+                                    onclick="showEditModal({{ entry.id }}, '{{ entry.notes|replace("'","\\'")|replace('"','\\"') if entry.notes else "" }}', '{{ entry.priority }}')"
+                                    title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-xs btn-outline-danger"
+                                    onclick="removeFromWaiting({{ entry.id }}, '{{ entry.patient.name|replace("'","\\'")|replace('"','\\"') }}')"
+                                    title="Remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="wa-empty"><i class="fas fa-users"></i>No patients waiting</div>
                     {% endif %}
                 </div>
             </div>
-        </div>
 
-        <!-- Current Waiting Area -->
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header bg-purple-50 border-purple-200">
-                    <h5 class="card-title mb-0 text-purple-900">
-                        <i class="fas fa-users text-purple-600 me-2"></i> 
-                        Current Waiting Area
-                    </h5>
+            <!-- In Progress column -->
+            <div class="wa-col mb-3">
+                <div class="wa-col-header">
+                    <div class="wa-col-title"><span class="col-dot orange"></span>In Progress</div>
+                    <span class="wa-col-count">{{ progress|length }}</span>
                 </div>
-                <div class="card-body">
-                    {% if waiting_entries %}
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th class="text-purple-700">Check-in</th>
-                                        <th class="text-purple-700">Patient</th>
-                                        <th class="text-purple-700">Doctor</th>
-                                        <th class="text-purple-700">Wait Time</th>
-                                        <th class="text-purple-700">Status</th>
-                                        <th class="text-purple-700">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for entry in waiting_entries %}
-                                    <tr class="waiting-row {% if entry.is_very_long_wait() %}waiting-urgent{% elif entry.is_long_wait() %}waiting-warning{% endif %}">
-                                        <td>
-                                            <span class="time-badge">{{ entry.check_in_time.strftime('%H:%M') }}</span>
-                                        </td>
-                                        <td>
-                                            <div class="patient-info">
-                                                <strong class="text-purple-900">{{ entry.patient.name }}</strong>
-                                                <br>
-                                                <small class="text-muted">{{ entry.patient.patient_number }}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="doctor-name">{{ entry.doctor.user.name }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="wait-time-badge {% if entry.is_very_long_wait() %}urgent{% elif entry.is_long_wait() %}warning{% else %}normal{% endif %}">
-                                                {{ entry.calculate_wait_time() }} min
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge status-{{ entry.status }}">
-                                                {{ entry.status.replace('_', ' ').title() }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <button class="btn btn-sm btn-outline-purple" 
-                                                        onclick="showEditModal({{ entry.id }}, '{{ entry.notes|replace("'", "\\'")|replace('"', '\\"') if entry.notes else "" }}', '{{ entry.priority }}')"
-                                                        title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        onclick="removeFromWaiting({{ entry.id }}, '{{ entry.patient.name|replace("'", "\\'")|replace('"', '\\"') }}')"
-                                                        title="Remove">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center text-muted py-5">
-                            <div class="empty-state">
-                                <i class="fas fa-users fa-4x text-purple-200 mb-3"></i>
-                                <h5 class="text-purple-700">No patients in waiting area</h5>
-                                <p class="text-muted">Add patients from scheduled appointments to start tracking</p>
+                <div class="wa-col-body">
+                    {% if progress %}
+                    {% for entry in progress %}
+                    {% set wt = entry.calculate_wait_time() %}
+                    <div class="wa-card p-{{ entry.priority }}">
+                        <div class="wa-card-top">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="wa-patient-avatar">{{ entry.patient.name[:2].upper() }}</div>
+                                <div>
+                                    <div class="wa-patient-name">{{ entry.patient.name }}</div>
+                                    <div class="wa-patient-id">#{{ entry.patient.patient_number }}</div>
+                                </div>
                             </div>
+                            <span style="font-size:.72rem;background:#fef9c3;color:#92400e;padding:.2rem .5rem;border-radius:.375rem;font-weight:600;">
+                                IN PROGRESS
+                            </span>
                         </div>
+                        <div class="wa-card-meta">
+                            <span class="wa-chip chip-time"><i class="fas fa-clock"></i>{{ entry.check_in_time.strftime('%H:%M') }}</span>
+                            <span class="wa-chip chip-doctor"><i class="fas fa-user-md"></i>Dr. {{ entry.doctor.user.name }}</span>
+                            <span class="wa-chip chip-wait-warn"><i class="fas fa-hourglass-half"></i>{{ wt }} min</span>
+                        </div>
+                        <div class="wa-card-actions">
+                            <button class="btn btn-xs btn-outline-secondary"
+                                    onclick="showEditModal({{ entry.id }}, '{{ entry.notes|replace("'","\\'")|replace('"','\\"') if entry.notes else "" }}', '{{ entry.priority }}')"
+                                    title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-xs btn-outline-danger"
+                                    onclick="removeFromWaiting({{ entry.id }}, '{{ entry.patient.name|replace("'","\\'")|replace('"','\\"') }}')"
+                                    title="Remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="wa-empty"><i class="fas fa-stethoscope"></i>No appointments in progress</div>
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Completed column (collapsed if empty) -->
+            {% if completed %}
+            <div class="wa-col">
+                <div class="wa-col-header">
+                    <div class="wa-col-title"><span class="col-dot green"></span>Completed Today</div>
+                    <span class="wa-col-count">{{ completed|length }}</span>
+                </div>
+                <div class="wa-col-body">
+                    {% for entry in completed %}
+                    <div class="wa-card p-{{ entry.priority }}" style="opacity:.7;">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="wa-patient-avatar" style="background:linear-gradient(135deg,#86efac,#22c55e);">
+                                {{ entry.patient.name[:2].upper() }}
+                            </div>
+                            <div>
+                                <div class="wa-patient-name">{{ entry.patient.name }}</div>
+                                <div class="wa-patient-id">Dr. {{ entry.doctor.user.name }}</div>
+                            </div>
+                            <span class="ms-auto" style="font-size:.72rem;background:#dcfce7;color:#166534;padding:.2rem .5rem;border-radius:.375rem;font-weight:600;">DONE</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
-    </div>
+
+    </div><!-- /board -->
 </div>
 
 <!-- Add to Waiting Modal -->
-<div class="modal fade" id="addToWaitingModal" tabindex="-1" aria-labelledby="addToWaitingModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-purple-50 border-purple-200">
-                <h5 class="modal-title text-purple-900" id="addToWaitingModalLabel">
-                    <i class="fas fa-plus-circle text-purple-600 me-2"></i>
-                    Add Patient to Waiting Area
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade" id="addToWaitingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2 text-purple-600"></i>Add to Waiting Area</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addToWaitingForm" method="POST" action="/waiting-area/receptionist/add-to-waiting">
-                <div class="modal-body">
+                <div class="modal-body pt-3">
                     <input type="hidden" name="appointment_id" id="appointmentId">
                     <div class="mb-3">
-                        <label for="patientName" class="form-label text-purple-700">Patient Name</label>
-                        <input type="text" class="form-control" id="patientName" readonly>
+                        <label class="form-label">Patient</label>
+                        <input type="text" class="form-control" id="patientName" readonly
+                               style="background:#f8f9fc;font-weight:600;">
                     </div>
                     <div class="mb-3">
-                        <label for="priority" class="form-label text-purple-700">Priority</label>
-                        <select class="form-select" name="priority" id="priority">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select" name="priority">
                             <option value="normal">Normal</option>
                             <option value="high">High</option>
                             <option value="urgent">Urgent</option>
                             <option value="low">Low</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="notes" class="form-label text-purple-700">Notes</label>
-                        <textarea class="form-control" name="notes" id="notes" rows="3" placeholder="Any special notes..."></textarea>
+                    <div class="mb-1">
+                        <label class="form-label">Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Any special instructions..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-purple">
-                        <i class="fas fa-plus me-1"></i> Add to Waiting
-                    </button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add to Waiting</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Edit Waiting Entry Modal -->
-<div class="modal fade" id="editWaitingModal" tabindex="-1" aria-labelledby="editWaitingModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-purple-50 border-purple-200">
-                <h5 class="modal-title text-purple-900" id="editWaitingModalLabel">
-                    <i class="fas fa-edit text-purple-600 me-2"></i>
-                    Edit Waiting Entry
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Edit Modal -->
+<div class="modal fade" id="editWaitingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2 text-purple-600"></i>Edit Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editWaitingForm" method="POST">
-                <div class="modal-body">
+                <div class="modal-body pt-3">
                     <div class="mb-3">
-                        <label for="editPriority" class="form-label text-purple-700">Priority</label>
+                        <label class="form-label">Priority</label>
                         <select class="form-select" name="priority" id="editPriority">
                             <option value="normal">Normal</option>
                             <option value="high">High</option>
@@ -311,404 +486,87 @@
                             <option value="low">Low</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="editNotes" class="form-label text-purple-700">Notes</label>
-                        <textarea class="form-control" name="notes" id="editNotes" rows="3"></textarea>
+                    <div class="mb-1">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" id="editNotes" rows="2"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-purple">
-                        <i class="fas fa-save me-1"></i> Update
-                    </button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Update</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Remove Confirmation Modal -->
-<div class="modal fade" id="removeConfirmModal" tabindex="-1" aria-labelledby="removeConfirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger-50 border-danger-200">
-                <h5 class="modal-title text-danger-900" id="removeConfirmModalLabel">
-                    <i class="fas fa-exclamation-triangle text-danger-600 me-2"></i>
-                    Remove from Waiting Area
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Remove Modal -->
+<div class="modal fade" id="removeConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow" style="border-radius:1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Remove Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to remove <strong id="removePatientName" class="text-purple-900"></strong> from the waiting area?</p>
+            <div class="modal-body py-2">
+                <p class="mb-0" style="font-size:.9rem;">Remove <strong id="removePatientName"></strong> from the waiting area?</p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="removeForm" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-times me-1"></i> Remove
-                    </button>
+            <div class="modal-footer border-0 pt-1">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <form id="removeForm" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times me-1"></i>Remove</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-/* Custom styles for waiting area */
-.stat-card {
-    border: none;
-    border-radius: 1rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--purple-600), var(--purple-700));
-}
-
-.stat-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.stat-card:hover .stat-icon {
-    transform: scale(1.1) rotate(5deg);
-    transition: all 0.3s ease;
-}
-
-.stat-waiting:hover {
-    box-shadow: 0 15px 35px rgba(2, 136, 209, 0.2);
-}
-
-.stat-progress:hover {
-    box-shadow: 0 15px 35px rgba(255, 152, 0, 0.2);
-}
-
-.stat-completed:hover {
-    box-shadow: 0 15px 35px rgba(76, 175, 80, 0.2);
-}
-
-.stat-alert:hover {
-    box-shadow: 0 15px 35px rgba(244, 67, 54, 0.2);
-}
-
-.stat-waiting {
-    background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
-    border-left: 4px solid #0288d1;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(2, 136, 209, 0.1);
-}
-
-.stat-progress {
-    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-    border-left: 4px solid #ff9800;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.1);
-}
-
-.stat-completed {
-    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-    border-left: 4px solid #4caf50;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.1);
-}
-
-.stat-alert {
-    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-    border-left: 4px solid #f44336;
-    border-radius: 1rem;
-    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.1);
-}
-
-.stat-icon {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.75rem;
-    color: white;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-icon::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-    border-radius: 50%;
-}
-
-.stat-waiting .stat-icon {
-    background: linear-gradient(135deg, #0288d1, #0277bd);
-    box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
-}
-
-.stat-progress .stat-icon {
-    background: linear-gradient(135deg, #ff9800, #f57c00);
-    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
-}
-
-.stat-completed .stat-icon {
-    background: linear-gradient(135deg, #4caf50, #388e3c);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.stat-alert .stat-icon {
-    background: linear-gradient(135deg, #f44336, #d32f2f);
-    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-}
-
-.time-badge {
-    background: var(--purple-100);
-    color: var(--purple-700);
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.wait-time-badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.wait-time-badge.normal {
-    background: var(--purple-100);
-    color: var(--purple-700);
-}
-
-.wait-time-badge.warning {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.wait-time-badge.urgent {
-    background: #fee2e2;
-    color: #dc2626;
-}
-
-.status-badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.status-waiting {
-    background: var(--purple-100);
-    color: var(--purple-700);
-}
-
-.status-in_progress {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.status-completed {
-    background: #dcfce7;
-    color: #16a34a;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 0.25rem;
-}
-
-.appointment-row, .waiting-row {
-    transition: all 0.2s ease;
-}
-
-.appointment-row:hover, .waiting-row:hover {
-    background-color: var(--purple-50);
-}
-
-.waiting-warning {
-    background-color: #fef3c7;
-}
-
-.waiting-urgent {
-    background-color: #fee2e2;
-}
-
-.empty-state {
-    padding: 2rem;
-}
-
-.doctor-name {
-    color: var(--purple-700);
-    font-weight: 500;
-}
-
-.patient-info strong {
-    color: var(--purple-900);
-}
-
-/* Button styles */
-.btn-purple {
-    background: linear-gradient(135deg, var(--purple-600), var(--purple-700));
-    border: none;
-    color: white;
-    transition: all 0.3s ease;
-}
-
-.btn-purple:hover {
-    background: linear-gradient(135deg, var(--purple-700), var(--purple-800));
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-    color: white;
-}
-
-.btn-outline-purple {
-    border: 2px solid var(--purple-600);
-    color: var(--purple-600);
-    background: transparent;
-    transition: all 0.3s ease;
-}
-
-.btn-outline-purple:hover {
-    background: var(--purple-600);
-    color: white;
-    transform: translateY(-1px);
-}
-
-/* Modal styles */
-.modal-header.bg-purple-50 {
-    background-color: var(--purple-50) !important;
-}
-
-.border-purple-200 {
-    border-color: var(--purple-200) !important;
-}
-
-.text-purple-900 {
-    color: var(--purple-900) !important;
-}
-
-.text-purple-700 {
-    color: var(--purple-700) !important;
-}
-
-.text-purple-600 {
-    color: var(--purple-600) !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .stat-card .card-body {
-        padding: 1rem;
-    }
-    
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.25rem;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-        gap: 0.125rem;
-    }
-}
-</style>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function showAddToWaitingModal(appointmentId, patientName) {
-    console.log('Opening modal for appointment:', appointmentId, 'patient:', patientName);
-    document.getElementById('appointmentId').value = appointmentId;
-    document.getElementById('patientName').value = patientName;
-    
-    // Use Bootstrap 5 modal API
-    const modal = new bootstrap.Modal(document.getElementById('addToWaitingModal'));
-    modal.show();
+function showAddToWaitingModal(apptId, name) {
+    document.getElementById('appointmentId').value = apptId;
+    document.getElementById('patientName').value   = name;
+    new bootstrap.Modal(document.getElementById('addToWaitingModal')).show();
 }
-
-function showEditModal(entryId, notes, priority) {
-    document.getElementById('editWaitingForm').action = `/waiting-area/receptionist/update-waiting/${entryId}`;
-    document.getElementById('editPriority').value = priority;
-    document.getElementById('editNotes').value = notes;
-    
-    // Use Bootstrap 5 modal API
-    const modal = new bootstrap.Modal(document.getElementById('editWaitingModal'));
-    modal.show();
+function showEditModal(id, notes, priority) {
+    document.getElementById('editWaitingForm').action = `/waiting-area/receptionist/update-waiting/${id}`;
+    document.getElementById('editPriority').value     = priority;
+    document.getElementById('editNotes').value        = notes;
+    new bootstrap.Modal(document.getElementById('editWaitingModal')).show();
 }
-
-function removeFromWaiting(entryId, patientName) {
-    document.getElementById('removePatientName').textContent = patientName;
-    document.getElementById('removeForm').action = `/waiting-area/receptionist/remove-from-waiting/${entryId}`;
-    
-    // Use Bootstrap 5 modal API
-    const modal = new bootstrap.Modal(document.getElementById('removeConfirmModal'));
-    modal.show();
+function removeFromWaiting(id, name) {
+    document.getElementById('removePatientName').textContent = name;
+    document.getElementById('removeForm').action             = `/waiting-area/receptionist/remove-from-waiting/${id}`;
+    new bootstrap.Modal(document.getElementById('removeConfirmModal')).show();
 }
-
 function refreshStats() {
     fetch('/waiting-area/api/waiting-stats')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('total-waiting').textContent = data.total_waiting;
-            document.getElementById('total-in-progress').textContent = data.total_in_progress;
-            document.getElementById('total-completed').textContent = data.total_completed;
-            document.getElementById('long-waits').textContent = data.long_waits;
-        })
-        .catch(error => console.error('Error fetching stats:', error));
-}
-
-function manualCleanup() {
-    if (confirm('This will automatically remove completed appointments from the waiting area. Continue?')) {
-        fetch('/waiting-area/api/cleanup-completed', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show notification
-                document.getElementById('cleanup-message').textContent = data.message;
-                document.getElementById('cleanup-notification').style.display = 'block';
-                
-                // Refresh the page after a short delay to show updated data
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error during cleanup:', error);
-            alert('Error during cleanup. Please try again.');
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('total-waiting').textContent    = d.total_waiting;
+            document.getElementById('total-in-progress').textContent= d.total_in_progress;
+            document.getElementById('total-completed').textContent  = d.total_completed;
+            document.getElementById('long-waits').textContent       = d.long_waits;
         });
-    }
 }
-
-// Auto-refresh stats every 30 seconds
+function manualCleanup() {
+    if (!confirm('Remove completed appointments from the waiting area?')) return;
+    fetch('/waiting-area/api/cleanup-completed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+                   'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            document.getElementById('cleanup-message').textContent = d.message;
+            document.getElementById('cleanup-notification').style.display = 'block';
+            setTimeout(() => window.location.reload(), 2000);
+        } else { alert('Error: ' + d.error); }
+    });
+}
 setInterval(refreshStats, 30000);
-
-// Initial load
-document.addEventListener('DOMContentLoaded', function() {
-    refreshStats();
-});
+document.addEventListener('DOMContentLoaded', refreshStats);
 </script>
-{% endblock %} 
+{% endblock %}
