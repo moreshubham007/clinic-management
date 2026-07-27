@@ -425,4 +425,27 @@ def search_patient():
         'email': patient.email,
         'mobile_number': patient.mobile_number,
         'patient_number': patient.patient_number
-    } for patient in patients]) 
+    } for patient in patients])
+
+
+@appointments_bp.route('/<int:appointment_id>/priority', methods=['POST'])
+@login_required
+def update_priority(appointment_id):
+    if current_user.role not in ['admin', 'doctor']:
+        return jsonify({'error': 'Permission denied'}), 403
+
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Doctors can only update priority for their own appointments
+    if current_user.role == 'doctor' and appointment.doctor_id != current_user.doctor.id:
+        return jsonify({'error': 'Permission denied'}), 403
+
+    data = request.get_json(silent=True) or {}
+    new_priority = data.get('priority', '').strip()
+
+    if new_priority not in ['high', 'medium', 'low']:
+        return jsonify({'error': 'Invalid priority'}), 400
+
+    appointment.priority = new_priority
+    db.session.commit()
+    return jsonify({'success': True, 'priority': new_priority})

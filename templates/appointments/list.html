@@ -112,6 +112,55 @@
                                         {% endif %}
                                     </td>
                                     <td>
+                                        {% if current_user.role in ['admin', 'doctor'] and
+                                              (current_user.role == 'admin' or current_user.doctor.id == appointment.doctor_id) %}
+                                        <!-- One-click priority dropdown for admin/doctor -->
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm border-0 p-0 priority-btn"
+                                                    data-id="{{ appointment.id }}"
+                                                    data-priority="{{ appointment.priority }}"
+                                                    data-bs-toggle="dropdown"
+                                                    title="Click to change priority">
+                                                {% if appointment.priority == 'high' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>High <i class="fas fa-caret-down ms-1"></i>
+                                                </span>
+                                                {% elif appointment.priority == 'low' %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-circle me-1"></i>Low <i class="fas fa-caret-down ms-1"></i>
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-minus-circle me-1"></i>Medium <i class="fas fa-caret-down ms-1"></i>
+                                                </span>
+                                                {% endif %}
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-sm shadow-sm py-1" style="min-width:130px;">
+                                                <li>
+                                                    <button class="dropdown-item py-1 px-3 priority-option {% if appointment.priority == 'high' %}active{% endif %}"
+                                                            data-id="{{ appointment.id }}" data-value="high">
+                                                        <span class="badge bg-danger me-2">High</span>
+                                                        <i class="fas fa-exclamation-circle text-danger"></i>
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item py-1 px-3 priority-option {% if appointment.priority == 'medium' %}active{% endif %}"
+                                                            data-id="{{ appointment.id }}" data-value="medium">
+                                                        <span class="badge bg-warning text-dark me-2">Medium</span>
+                                                        <i class="fas fa-minus-circle text-warning"></i>
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item py-1 px-3 priority-option {% if appointment.priority == 'low' %}active{% endif %}"
+                                                            data-id="{{ appointment.id }}" data-value="low">
+                                                        <span class="badge bg-secondary me-2">Low</span>
+                                                        <i class="fas fa-circle text-secondary"></i>
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        {% else %}
+                                        <!-- Read-only badge for receptionist/patient -->
                                         {% if appointment.priority == 'high' %}
                                             <span class="badge bg-danger">
                                                 <i class="fas fa-exclamation-circle me-1"></i>High
@@ -121,9 +170,10 @@
                                                 <i class="fas fa-circle me-1"></i>Low
                                             </span>
                                         {% else %}
-                                            <span class="badge bg-warning">
+                                            <span class="badge bg-warning text-dark">
                                                 <i class="fas fa-minus-circle me-1"></i>Medium
                                             </span>
+                                        {% endif %}
                                         {% endif %}
                                     </td>
                                     <td>
@@ -321,5 +371,41 @@ function deleteAppointment(appointmentId) {
         });
     }
 }
+
+// One-click priority change
+document.querySelectorAll('.priority-option').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const id       = this.dataset.id;
+        const priority = this.dataset.value;
+
+        fetch(`/appointments/${id}/priority`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ priority })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Update the badge without full page reload
+                const trigger = document.querySelector(`.priority-btn[data-id="${id}"]`);
+                const badgeMap = {
+                    high:   '<span class="badge bg-danger"><i class="fas fa-exclamation-circle me-1"></i>High <i class="fas fa-caret-down ms-1"></i></span>',
+                    medium: '<span class="badge bg-warning text-dark"><i class="fas fa-minus-circle me-1"></i>Medium <i class="fas fa-caret-down ms-1"></i></span>',
+                    low:    '<span class="badge bg-secondary"><i class="fas fa-circle me-1"></i>Low <i class="fas fa-caret-down ms-1"></i></span>'
+                };
+                trigger.innerHTML = badgeMap[priority];
+                trigger.dataset.priority = priority;
+
+                // Update active state in the dropdown
+                trigger.closest('.dropdown').querySelectorAll('.priority-option').forEach(o => {
+                    o.classList.toggle('active', o.dataset.value === priority);
+                });
+            } else {
+                alert(data.error || 'Failed to update priority');
+            }
+        })
+        .catch(() => alert('Network error updating priority'));
+    });
+});
 </script>
 {% endblock %} 
