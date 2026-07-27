@@ -77,13 +77,18 @@ def doctor_dashboard():
             )
         ).count()
 
+    new_patients_today      = sum(1 for a in today_appointments if a.patient_type == 'new')
+    existing_patients_today = sum(1 for a in today_appointments if a.patient_type == 'existing')
+
     return render_template('dashboard/doctor_dashboard.html',
                          today_appointments=today_appointments,
                          upcoming_appointments=upcoming_appointments,
                          recent_cases=recent_cases,
                          unanswered_questions=unanswered_questions,
                          patients=recent_patients,
-                         total_patients=total_patients)
+                         total_patients=total_patients,
+                         new_patients_today=new_patients_today,
+                         existing_patients_today=existing_patients_today)
 
 @dashboard_bp.route('/patient/dashboard')
 @login_required

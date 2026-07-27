@@ -65,10 +65,10 @@ def receptionist_waiting_area():
         Appointment.status == 'scheduled'
     ).join(Doctor).join(User, Doctor.user_id == User.id).all()
     
-    # Get current waiting area entries (only active ones)
+    # Get all today's waiting area entries (active + completed today)
     waiting_entries = WaitingArea.query.filter(
         WaitingArea.check_in_time >= today,
-        WaitingArea.status.in_(['waiting', 'in_progress'])
+        WaitingArea.check_in_time < today + timedelta(days=1)
     ).join(Appointment).join(Doctor).join(User, Doctor.user_id == User.id).order_by(
         WaitingArea.check_in_time.asc()
     ).all()
@@ -164,7 +164,7 @@ def doctor_waiting_area():
         waiting_entries = WaitingArea.query.filter(
             WaitingArea.doctor_id == doctor.id,
             WaitingArea.check_in_time >= today,
-            WaitingArea.status.in_(['waiting', 'in_progress'])
+            WaitingArea.check_in_time < today + timedelta(days=1)
         ).order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
@@ -173,7 +173,7 @@ def doctor_waiting_area():
         # Admin can see all waiting entries
         waiting_entries = WaitingArea.query.filter(
             WaitingArea.check_in_time >= today,
-            WaitingArea.status.in_(['waiting', 'in_progress'])
+            WaitingArea.check_in_time < today + timedelta(days=1)
         ).order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
@@ -241,11 +241,19 @@ def waiting_stats():
     cleanup_completed_appointments()
     
     today = date.today()
-    
+
+    # Scope by doctor when called by a doctor
+    base_query = WaitingArea.query.filter(
+        WaitingArea.check_in_time >= today,
+        WaitingArea.check_in_time < today + timedelta(days=1)
+    )
+    if current_user.role == 'doctor':
+        doctor = Doctor.query.filter_by(user_id=current_user.id).first()
+        if doctor:
+            base_query = base_query.filter(WaitingArea.doctor_id == doctor.id)
+
     # Get waiting entries for today
-    waiting_entries = WaitingArea.query.filter(
-        WaitingArea.check_in_time >= today
-    ).all()
+    waiting_entries = base_query.all()
     
     # Calculate statistics
     total_waiting = len([e for e in waiting_entries if e.status == 'waiting'])
@@ -313,7 +321,7 @@ def doctor_waiting_list():
         waiting_entries = WaitingArea.query.filter(
             WaitingArea.doctor_id == doctor.id,
             WaitingArea.check_in_time >= today,
-            WaitingArea.status.in_(['waiting', 'in_progress'])
+            WaitingArea.check_in_time < today + timedelta(days=1)
         ).order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()
@@ -322,7 +330,7 @@ def doctor_waiting_list():
         # Admin can see all
         waiting_entries = WaitingArea.query.filter(
             WaitingArea.check_in_time >= today,
-            WaitingArea.status.in_(['waiting', 'in_progress'])
+            WaitingArea.check_in_time < today + timedelta(days=1)
         ).order_by(
             WaitingArea.priority.desc(),
             WaitingArea.check_in_time.asc()

@@ -184,8 +184,8 @@
 {% block content %}
 <div class="container-fluid">
 
-    <!-- Long wait alert -->
-    <div id="longWaitAlert" class="flash-item flash-warning d-none mb-3" style="display:none!important;">
+    <!-- Long wait alert (hidden by default via d-none; JS removes d-none when needed) -->
+    <div id="longWaitAlert" class="flash-item flash-warning d-none mb-3">
         <span><i class="fas fa-exclamation-triangle me-2"></i>
         <strong>Long Wait Alert:</strong> Some patients have been waiting over 1 hour!</span>
         <button class="btn-close btn-close-sm" onclick="this.closest('#longWaitAlert').classList.add('d-none')"></button>
@@ -420,14 +420,7 @@ function refreshWaitingList() {
                 }
             });
 
-            // Long wait alert
-            const alert = document.getElementById('longWaitAlert');
-            if (hasLongWait) {
-                alert.style.removeProperty('display');
-                alert.classList.remove('d-none');
-            } else {
-                alert.classList.add('d-none');
-            }
+            // Long wait alert driven by refreshStats() — skip here
         })
         .catch(() => {
             ['colWaiting','colProgress','colDone'].forEach(id => {
@@ -513,14 +506,9 @@ function refreshStats() {
             document.getElementById('statLongWaits').textContent = d.long_waits;
             document.getElementById('statAvg').textContent       = d.average_wait_time;
 
-            // Flash alert if long waits > 0
-            const alert = document.getElementById('longWaitAlert');
-            if (d.long_waits > 0) {
-                alert.style.removeProperty('display');
-                alert.classList.remove('d-none');
-            } else {
-                alert.classList.add('d-none');
-            }
+            // Show/hide long wait alert
+            const alertEl = document.getElementById('longWaitAlert');
+            alertEl.classList.toggle('d-none', !(d.long_waits > 0));
         })
         .catch(() => {});
 }
