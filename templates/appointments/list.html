@@ -87,15 +87,36 @@
                         <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low Priority</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label for="date_from" class="form-label">Date From</label>
-                    <input type="date" class="form-control" id="date_from" name="date_from"
-                           value="{{ request.args.get('date_from', '') }}">
-                </div>
-                <div class="col-md-3">
-                    <label for="date_to" class="form-label">Date To</label>
-                    <input type="date" class="form-control" id="date_to" name="date_to"
-                           value="{{ request.args.get('date_to', '') }}">
+                <!-- Smart Date Filter: Single or Range -->
+                {% set _df = request.args.get('date_from','') %}
+                {% set _dt = request.args.get('date_to','') %}
+                {% set _range_mode = _df != _dt or (_df == '' and _dt != '') or (_df != '' and _dt != '' and _df != _dt) %}
+                <div class="col-md-3" id="dateFilterWrap" style="{{ 'min-width:340px;max-width:420px;' if _range_mode else '' }}">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <label class="form-label mb-0">Date</label>
+                        <div class="btn-group btn-group-sm" role="group" id="dateModeToggle">
+                            <button type="button" class="btn btn-xs {{ 'btn-primary' if not _range_mode else 'btn-outline-secondary' }}"
+                                    id="btnSingle" onclick="setDateMode('single')">Single</button>
+                            <button type="button" class="btn btn-xs {{ 'btn-primary' if _range_mode else 'btn-outline-secondary' }}"
+                                    id="btnRange"  onclick="setDateMode('range')">Range</button>
+                        </div>
+                    </div>
+                    <!-- Single date mode -->
+                    <div id="modeSingle" {{ 'style="display:none"' if _range_mode else '' }}>
+                        <input type="date" class="form-control" id="single_date"
+                               value="{{ _df if not _range_mode else '' }}">
+                    </div>
+                    <!-- Range mode -->
+                    <div id="modeRange" class="d-flex gap-1 align-items-center" {{ '' if _range_mode else 'style="display:none"' }}>
+                        <input type="date" class="form-control" id="range_from"
+                               value="{{ _df if _range_mode else '' }}" placeholder="From">
+                        <span class="text-muted px-1">→</span>
+                        <input type="date" class="form-control" id="range_to"
+                               value="{{ _dt if _range_mode else '' }}" placeholder="To">
+                    </div>
+                    <!-- Hidden fields actually submitted -->
+                    <input type="hidden" name="date_from" id="hid_date_from" value="{{ _df }}">
+                    <input type="hidden" name="date_to"   id="hid_date_to"   value="{{ _dt }}">
                 </div>
                 <div class="col-md-3">
                     <label for="payment_status" class="form-label">Payment Status</label>
@@ -641,5 +662,53 @@ document.querySelectorAll('.priority-option').forEach(btn => {
         .catch(() => alert('Network error updating priority'));
     });
 });
+
+// ── Smart date filter ──────────────────────────────────────────────
+(function () {
+    const wrap      = document.getElementById('dateFilterWrap');
+    const modeSingle= document.getElementById('modeSingle');
+    const modeRange = document.getElementById('modeRange');
+    const btnSingle = document.getElementById('btnSingle');
+    const btnRange  = document.getElementById('btnRange');
+    const singleIn  = document.getElementById('single_date');
+    const rangeFrom = document.getElementById('range_from');
+    const rangeTo   = document.getElementById('range_to');
+    const hidFrom   = document.getElementById('hid_date_from');
+    const hidTo     = document.getElementById('hid_date_to');
+
+    function setDateMode(mode) {
+        if (mode === 'single') {
+            modeSingle.style.display = '';
+            modeRange.style.display  = 'none';
+            btnSingle.className = btnSingle.className.replace('btn-outline-secondary','btn-primary');
+            btnRange.className  = btnRange.className.replace('btn-primary','btn-outline-secondary');
+            wrap.style.minWidth = '';
+            wrap.style.maxWidth = '';
+        } else {
+            modeSingle.style.display = 'none';
+            modeRange.style.display  = '';
+            btnRange.className  = btnRange.className.replace('btn-outline-secondary','btn-primary');
+            btnSingle.className = btnSingle.className.replace('btn-primary','btn-outline-secondary');
+            wrap.style.minWidth = '340px';
+            wrap.style.maxWidth = '420px';
+        }
+    }
+    window.setDateMode = setDateMode;   // make available to onclick=""
+
+    // Sync hidden inputs before the form submits
+    if (wrap) {
+        wrap.closest('form').addEventListener('submit', function () {
+            if (modeRange.style.display === 'none') {
+                // single mode
+                hidFrom.value = singleIn.value;
+                hidTo.value   = singleIn.value;
+            } else {
+                // range mode
+                hidFrom.value = rangeFrom.value;
+                hidTo.value   = rangeTo.value;
+            }
+        });
+    }
+})();
 </script>
 {% endblock %} 
