@@ -55,96 +55,117 @@
     </div>
 
     <!-- Filters -->
+    {% set _df = request.args.get('date_from','') %}
+    {% set _dt = request.args.get('date_to','') %}
+    {% set _range_mode = _df != '' and _dt != '' and _df != _dt %}
+    {% set _any_filter = request.args.get('status') or _df or _dt or request.args.get('priority')
+                         or request.args.get('patient_type') or request.args.get('payment_status')
+                         or request.args.get('has_bill') %}
     <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Filters</h5>
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+            <h6 class="mb-0 fw-semibold">
+                <i class="fas fa-filter me-1 text-purple-600" style="font-size:.8rem;"></i>Filters
+            </h6>
+            {% if _any_filter %}
+            <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-xs btn-outline-secondary">
+                <i class="fas fa-times me-1"></i>Clear
+            </a>
+            {% endif %}
         </div>
-        <div class="card-body">
-            <form method="GET" class="row g-3">
-                <div class="col-md-3">
-                    <label for="status" class="form-label">Status</label>
-                    <select class="form-select" id="status" name="status">
-                        <option value="">All Status</option>
-                        <option value="scheduled" {% if request.args.get('status') == 'scheduled' %}selected{% endif %}>Scheduled</option>
-                        <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
-                        <option value="cancelled" {% if request.args.get('status') == 'cancelled' %}selected{% endif %}>Cancelled</option>
-                    </select>
+        <div class="card-body pb-3">
+            <form method="GET" id="filterForm">
+
+                <!-- Row 1 — categorical filters -->
+                <div class="row g-2 mb-2">
+                    <div class="col-6 col-sm-4 col-md-2">
+                        <label class="form-label">Status</label>
+                        <select class="form-select form-select-sm" name="status">
+                            <option value="">All</option>
+                            <option value="scheduled" {% if request.args.get('status') == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                            <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Completed</option>
+                            <option value="cancelled" {% if request.args.get('status') == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-2">
+                        <label class="form-label">Patient Type</label>
+                        <select class="form-select form-select-sm" name="patient_type">
+                            <option value="">All</option>
+                            <option value="new"      {% if request.args.get('patient_type') == 'new'      %}selected{% endif %}>New</option>
+                            <option value="existing" {% if request.args.get('patient_type') == 'existing' %}selected{% endif %}>Existing</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-2">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select form-select-sm" name="priority">
+                            <option value="">All</option>
+                            <option value="high"   {% if request.args.get('priority') == 'high'   %}selected{% endif %}>High</option>
+                            <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="low"    {% if request.args.get('priority') == 'low'    %}selected{% endif %}>Low</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-2">
+                        <label class="form-label">Payment</label>
+                        <select class="form-select form-select-sm" name="payment_status">
+                            <option value="">All</option>
+                            <option value="unpaid"  {% if request.args.get('payment_status') == 'unpaid'  %}selected{% endif %}>Unpaid</option>
+                            <option value="partial" {% if request.args.get('payment_status') == 'partial' %}selected{% endif %}>Partial</option>
+                            <option value="paid"    {% if request.args.get('payment_status') == 'paid'    %}selected{% endif %}>Paid</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-sm-4 col-md-2">
+                        <label class="form-label">Bill</label>
+                        <select class="form-select form-select-sm" name="has_bill">
+                            <option value="">All</option>
+                            <option value="yes" {% if request.args.get('has_bill') == 'yes' %}selected{% endif %}>Has Bill</option>
+                            <option value="no"  {% if request.args.get('has_bill') == 'no'  %}selected{% endif %}>No Bill</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <label for="patient_type" class="form-label">Patient Type</label>
-                    <select class="form-select" id="patient_type" name="patient_type">
-                        <option value="">All Patient Types</option>
-                        <option value="new" {% if request.args.get('patient_type') == 'new' %}selected{% endif %}>New Patients</option>
-                        <option value="existing" {% if request.args.get('patient_type') == 'existing' %}selected{% endif %}>Existing Patients</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="priority" class="form-label">Priority</label>
-                    <select class="form-select" id="priority" name="priority">
-                        <option value="">All Priorities</option>
-                        <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>High Priority</option>
-                        <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>Medium Priority</option>
-                        <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>Low Priority</option>
-                    </select>
-                </div>
-                <!-- Smart Date Filter: Single or Range -->
-                {% set _df = request.args.get('date_from','') %}
-                {% set _dt = request.args.get('date_to','') %}
-                {% set _range_mode = _df != _dt or (_df == '' and _dt != '') or (_df != '' and _dt != '' and _df != _dt) %}
-                <div class="col-md-3" id="dateFilterWrap" style="{{ 'min-width:340px;max-width:420px;' if _range_mode else '' }}">
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <label class="form-label mb-0">Date</label>
-                        <div class="btn-group btn-group-sm" role="group" id="dateModeToggle">
-                            <button type="button" class="btn btn-xs {{ 'btn-primary' if not _range_mode else 'btn-outline-secondary' }}"
-                                    id="btnSingle" onclick="setDateMode('single')">Single</button>
-                            <button type="button" class="btn btn-xs {{ 'btn-primary' if _range_mode else 'btn-outline-secondary' }}"
-                                    id="btnRange"  onclick="setDateMode('range')">Range</button>
+
+                <!-- Row 2 — date filter + submit -->
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-auto" id="dateFilterWrap">
+                        <!-- Label row with toggle -->
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <label class="form-label mb-0">Date</label>
+                            <div class="btn-group" role="group" id="dateModeToggle">
+                                <button type="button"
+                                        class="btn btn-xs {{ 'btn-primary' if not _range_mode else 'btn-outline-secondary' }}"
+                                        id="btnSingle" onclick="setDateMode('single')">Single</button>
+                                <button type="button"
+                                        class="btn btn-xs {{ 'btn-primary' if _range_mode else 'btn-outline-secondary' }}"
+                                        id="btnRange"  onclick="setDateMode('range')">Range</button>
+                            </div>
                         </div>
+                        <!-- Single picker -->
+                        <div id="modeSingle" {% if _range_mode %}style="display:none"{% endif %}>
+                            <input type="date" class="form-control form-control-sm" id="single_date"
+                                   style="width:160px;"
+                                   value="{{ _df if not _range_mode else '' }}">
+                        </div>
+                        <!-- Range picker -->
+                        <div id="modeRange" class="d-flex align-items-center gap-1"
+                             {% if not _range_mode %}style="display:none"{% endif %}>
+                            <input type="date" class="form-control form-control-sm" id="range_from"
+                                   style="width:150px;"
+                                   value="{{ _df if _range_mode else '' }}">
+                            <span class="text-muted fw-bold">→</span>
+                            <input type="date" class="form-control form-control-sm" id="range_to"
+                                   style="width:150px;"
+                                   value="{{ _dt if _range_mode else '' }}">
+                        </div>
+                        <!-- Hidden fields submitted to server -->
+                        <input type="hidden" name="date_from" id="hid_date_from" value="{{ _df }}">
+                        <input type="hidden" name="date_to"   id="hid_date_to"   value="{{ _dt }}">
                     </div>
-                    <!-- Single date mode -->
-                    <div id="modeSingle" {{ 'style="display:none"' if _range_mode else '' }}>
-                        <input type="date" class="form-control" id="single_date"
-                               value="{{ _df if not _range_mode else '' }}">
+
+                    <div class="col-auto ms-md-auto">
+                        <button type="submit" class="btn btn-primary btn-sm px-4">
+                            <i class="fas fa-search me-1"></i>Apply
+                        </button>
                     </div>
-                    <!-- Range mode -->
-                    <div id="modeRange" class="d-flex gap-1 align-items-center" {{ '' if _range_mode else 'style="display:none"' }}>
-                        <input type="date" class="form-control" id="range_from"
-                               value="{{ _df if _range_mode else '' }}" placeholder="From">
-                        <span class="text-muted px-1">→</span>
-                        <input type="date" class="form-control" id="range_to"
-                               value="{{ _dt if _range_mode else '' }}" placeholder="To">
-                    </div>
-                    <!-- Hidden fields actually submitted -->
-                    <input type="hidden" name="date_from" id="hid_date_from" value="{{ _df }}">
-                    <input type="hidden" name="date_to"   id="hid_date_to"   value="{{ _dt }}">
                 </div>
-                <div class="col-md-3">
-                    <label for="payment_status" class="form-label">Payment Status</label>
-                    <select class="form-select" id="payment_status" name="payment_status">
-                        <option value="">All Payments</option>
-                        <option value="unpaid"  {% if request.args.get('payment_status') == 'unpaid'  %}selected{% endif %}>Unpaid</option>
-                        <option value="partial" {% if request.args.get('payment_status') == 'partial' %}selected{% endif %}>Partial</option>
-                        <option value="paid"    {% if request.args.get('payment_status') == 'paid'    %}selected{% endif %}>Paid</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="has_bill" class="form-label">Bill</label>
-                    <select class="form-select" id="has_bill" name="has_bill">
-                        <option value="">All</option>
-                        <option value="yes" {% if request.args.get('has_bill') == 'yes' %}selected{% endif %}>Has Bill</option>
-                        <option value="no"  {% if request.args.get('has_bill') == 'no'  %}selected{% endif %}>No Bill</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary flex-fill">Filter</button>
-                    {% if request.args.get('status') or request.args.get('date_from') or request.args.get('date_to')
-                          or request.args.get('priority') or request.args.get('patient_type')
-                          or request.args.get('payment_status') or request.args.get('has_bill') %}
-                    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-outline-secondary" title="Clear filters">
-                        <i class="fas fa-times"></i>
-                    </a>
-                    {% endif %}
-                </div>
+
             </form>
         </div>
     </div>
@@ -665,50 +686,38 @@ document.querySelectorAll('.priority-option').forEach(btn => {
 
 // ── Smart date filter ──────────────────────────────────────────────
 (function () {
-    const wrap      = document.getElementById('dateFilterWrap');
-    const modeSingle= document.getElementById('modeSingle');
-    const modeRange = document.getElementById('modeRange');
-    const btnSingle = document.getElementById('btnSingle');
-    const btnRange  = document.getElementById('btnRange');
-    const singleIn  = document.getElementById('single_date');
-    const rangeFrom = document.getElementById('range_from');
-    const rangeTo   = document.getElementById('range_to');
-    const hidFrom   = document.getElementById('hid_date_from');
-    const hidTo     = document.getElementById('hid_date_to');
+    const modeSingle = document.getElementById('modeSingle');
+    const modeRange  = document.getElementById('modeRange');
+    const btnSingle  = document.getElementById('btnSingle');
+    const btnRange   = document.getElementById('btnRange');
+    const singleIn   = document.getElementById('single_date');
+    const rangeFrom  = document.getElementById('range_from');
+    const rangeTo    = document.getElementById('range_to');
+    const hidFrom    = document.getElementById('hid_date_from');
+    const hidTo      = document.getElementById('hid_date_to');
 
     function setDateMode(mode) {
-        if (mode === 'single') {
-            modeSingle.style.display = '';
-            modeRange.style.display  = 'none';
-            btnSingle.className = btnSingle.className.replace('btn-outline-secondary','btn-primary');
-            btnRange.className  = btnRange.className.replace('btn-primary','btn-outline-secondary');
-            wrap.style.minWidth = '';
-            wrap.style.maxWidth = '';
-        } else {
-            modeSingle.style.display = 'none';
-            modeRange.style.display  = '';
-            btnRange.className  = btnRange.className.replace('btn-outline-secondary','btn-primary');
-            btnSingle.className = btnSingle.className.replace('btn-primary','btn-outline-secondary');
-            wrap.style.minWidth = '340px';
-            wrap.style.maxWidth = '420px';
-        }
+        const isSingle = mode === 'single';
+        modeSingle.style.display = isSingle ? '' : 'none';
+        modeRange.style.display  = isSingle ? 'none' : '';
+        btnSingle.classList.toggle('btn-primary',          isSingle);
+        btnSingle.classList.toggle('btn-outline-secondary',!isSingle);
+        btnRange.classList.toggle('btn-primary',           !isSingle);
+        btnRange.classList.toggle('btn-outline-secondary',  isSingle);
     }
-    window.setDateMode = setDateMode;   // make available to onclick=""
+    window.setDateMode = setDateMode;
 
-    // Sync hidden inputs before the form submits
-    if (wrap) {
-        wrap.closest('form').addEventListener('submit', function () {
-            if (modeRange.style.display === 'none') {
-                // single mode
-                hidFrom.value = singleIn.value;
-                hidTo.value   = singleIn.value;
-            } else {
-                // range mode
-                hidFrom.value = rangeFrom.value;
-                hidTo.value   = rangeTo.value;
-            }
-        });
-    }
+    // Sync hidden inputs before submit
+    const filterForm = document.getElementById('filterForm');
+    filterForm?.addEventListener('submit', function () {
+        if (modeRange.style.display === 'none') {
+            hidFrom.value = singleIn.value;
+            hidTo.value   = singleIn.value;
+        } else {
+            hidFrom.value = rangeFrom.value;
+            hidTo.value   = rangeTo.value;
+        }
+    });
 })();
 </script>
 {% endblock %} 
