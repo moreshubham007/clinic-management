@@ -115,13 +115,11 @@
                 <div class="pub-submit-spacer"></div>
                 <div class="pub-submit-bar">
                     <div class="d-flex gap-2">
-                        <form method="POST" style="flex-shrink:0;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="action" value="search">
-                            <button type="submit" class="btn-ghost" style="height:100%;">
-                                <i class="fas fa-arrow-left"></i>
-                            </button>
-                        </form>
+                        <a href="{{ url_for('public_appt.book_existing_patient') }}"
+                           class="btn-ghost d-flex align-items-center justify-content-center"
+                           style="flex-shrink:0;min-width:48px;text-decoration:none;">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
                         <button type="submit" class="btn-green flex-fill">
                             <i class="fas fa-calendar-check"></i> Submit Request
                         </button>
