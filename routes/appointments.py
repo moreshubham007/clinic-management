@@ -641,6 +641,149 @@ def export_appointments():
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
+@appointments_bp.route('/export-detailed')
+@login_required
+def export_appointments_detailed():
+    """Export appointments with full patient contact & demographic details."""
+    if current_user.role not in ['admin', 'doctor', 'receptionist']:
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        flash('openpyxl not installed. Please rebuild the Docker image.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    appointments = _build_appointment_query().all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Appointments + Patient Details'
+
+    thin   = Side(style='thin', color='CCCCCC')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    # ── Header row ──────────────────────────────────────────────────────────
+    hdr_font = Font(bold=True, color='FFFFFF', size=11)
+    hdr_fill = PatternFill('solid', fgColor='1565C0')   # blue to distinguish
+
+    headers = [
+        # Appointment info
+        'Date', 'Time', 'Patient Type', 'Priority', 'Status',
+        # Patient details
+        'Patient Name', 'Patient ID', 'Mobile', 'Email', 'Gender',
+        'Date of Birth', 'Age', 'Address', 'City', 'State', 'PIN',
+        # Doctor & billing
+        'Doctor',
+        'Consultation (₹)', 'Medicine (₹)', 'Discount (₹)', 'Total Bill (₹)',
+        'Payment Status', 'Amount Paid (₹)', 'Payment Mode',
+        # Notes
+        'Notes',
+    ]
+    ws.append(headers)
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font      = hdr_font
+        cell.fill      = hdr_fill
+        cell.alignment = center
+        cell.border    = border
+
+    # ── Data rows ────────────────────────────────────────────────────────────
+    alt_fill = PatternFill('solid', fgColor='E3F2FD')  # light blue alternating
+    for row_num, appt in enumerate(appointments, 2):
+        p = appt.patient
+
+        # Calculate age from date_of_birth
+        age = ''
+        dob_str = ''
+        if p and p.date_of_birth:
+            dob_str = p.date_of_birth.strftime('%d/%m/%Y')
+            today   = datetime.now().date()
+            age     = today.year - p.date_of_birth.year - (
+                (today.month, today.day) < (p.date_of_birth.month, p.date_of_birth.day)
+            )
+
+        consult = float(appt.consultation_fee or 0)
+        meds    = float(appt.medicine_charges  or 0)
+        disc    = float(appt.discount          or 0)
+        total   = consult + meds - disc
+
+        row = [
+            appt.datetime.strftime('%d/%m/%Y'),
+            appt.datetime.strftime('%H:%M'),
+            (appt.patient_type or '').title(),
+            (appt.priority     or '').title(),
+            (appt.status       or '').title(),
+            # Patient
+            p.name           if p else '',
+            p.patient_number if p else '',
+            p.mobile_number  if p else '',
+            p.email          if p else '',
+            (p.gender or '').title() if p else '',
+            dob_str,
+            age,
+            p.address  if p else '',
+            p.city     if p else '',
+            p.state    if p else '',
+            p.pin_code if p else '',
+            # Doctor & billing
+            f"Dr. {appt.doctor.user.name}" if appt.doctor else '',
+            consult if consult else '',
+            meds    if meds    else '',
+            disc    if disc    else '',
+            total   if total   else '',
+            (appt.payment_status or '').title(),
+            float(appt.payment_amount) if appt.payment_amount else '',
+            (appt.payment_mode or '').title(),
+            appt.notes or '',
+        ]
+        ws.append(row)
+        fill = alt_fill if row_num % 2 == 0 else None
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_num, column=col_idx)
+            cell.border    = border
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            if fill:
+                cell.fill = fill
+
+    # ── Column widths ─────────────────────────────────────────────────────────
+    col_widths = [
+        12, 8, 14, 10, 12,          # appointment
+        22, 12, 16, 26, 10,         # patient identity
+        14, 6, 30, 15, 15, 8,       # DOB/age/address
+        22,                         # doctor
+        16, 14, 12, 14, 14, 16, 14, # billing
+        30,                         # notes
+    ]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.row_dimensions[1].height = 30
+    ws.freeze_panes = 'A2'
+
+    # ── Summary row ──────────────────────────────────────────────────────────
+    ws.append([])
+    sr = ws.max_row + 1
+    ws.cell(sr, 1, f'Total appointments: {len(appointments)}').font = Font(bold=True)
+    ws.cell(sr, 21, sum(
+        float(a.consultation_fee or 0) + float(a.medicine_charges or 0) - float(a.discount or 0)
+        for a in appointments
+    )).font = Font(bold=True, color='1565C0')
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    filename = f'appointments_with_patients_{date_str}.xlsx'
+    return send_file(buf, as_attachment=True,
+                     download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 @appointments_bp.route('/<int:appointment_id>/billing', methods=['POST'])
 @login_required
 def update_billing(appointment_id):

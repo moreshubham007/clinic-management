@@ -23,8 +23,22 @@
                             has_bill=request.args.get('has_bill','')) }}"
                    class="btn btn-success btn-sm"
                    target="_blank"
-                   title="Export filtered appointments to Excel">
+                   title="Export appointments (summary) to Excel">
                     <i class="fas fa-file-excel me-1"></i>Excel
+                </a>
+                <a href="{{ url_for('appointments.export_appointments_detailed',
+                            status=request.args.get('status',''),
+                            date_from=request.args.get('date_from',''),
+                            date_to=request.args.get('date_to',''),
+                            doctor=request.args.get('doctor',''),
+                            patient_type=request.args.get('patient_type',''),
+                            priority=request.args.get('priority',''),
+                            payment_status=request.args.get('payment_status',''),
+                            has_bill=request.args.get('has_bill','')) }}"
+                   class="btn btn-info btn-sm"
+                   target="_blank"
+                   title="Export appointments with full patient details (mobile, email, address, DOB)">
+                    <i class="fas fa-user-circle me-1"></i>With Patient Details
                 </a>
                 <a href="{{ url_for('appointments.export_appointments',
                             format='print',
