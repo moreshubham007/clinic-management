@@ -79,6 +79,7 @@
                                 <th>Priority</th>
                                 <th>Doctor</th>
                                 <th>Status</th>
+                                <th>Bill & Payment</th>
                                 <th>Notes</th>
                                 <th>Actions</th>
                             </tr>
@@ -189,6 +190,63 @@
                                             {{ appointment.status.title() }}
                                         </span>
                                     </td>
+                                    <!-- Bill & Payment column -->
+                                    <td style="min-width:140px;">
+                                        {% set consult = appointment.consultation_fee or 0 %}
+                                        {% set meds    = appointment.medicine_charges or 0 %}
+                                        {% set disc    = appointment.discount or 0 %}
+                                        {% set total   = (consult + meds - disc) %}
+
+                                        {% if total > 0 %}
+                                        <div class="fw-semibold">₹{{ "%.0f"|format(total) }}</div>
+                                        <small class="text-muted">
+                                            C:₹{{ "%.0f"|format(consult) }}
+                                            {% if meds > 0 %} M:₹{{ "%.0f"|format(meds) }}{% endif %}
+                                            {% if disc > 0 %} -₹{{ "%.0f"|format(disc) }}{% endif %}
+                                        </small><br>
+                                        {% else %}
+                                        <span class="text-muted small">No bill</span><br>
+                                        {% endif %}
+
+                                        {% if appointment.payment_status == 'paid' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle mt-1">
+                                            <i class="fas fa-check-circle me-1"></i>Paid
+                                        </span>
+                                        {% elif appointment.payment_status == 'partial' %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle mt-1">
+                                            <i class="fas fa-adjust me-1"></i>Partial
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle mt-1">
+                                            <i class="fas fa-times-circle me-1"></i>Unpaid
+                                        </span>
+                                        {% endif %}
+                                        {% if appointment.payment_amount %}
+                                        <small class="text-muted d-block">₹{{ "%.0f"|format(appointment.payment_amount) }} rcvd</small>
+                                        {% endif %}
+
+                                        <!-- Action buttons for billing/payment -->
+                                        <div class="d-flex gap-1 mt-1 flex-wrap">
+                                        {% if current_user.role in ['admin', 'doctor'] and
+                                              (current_user.role == 'admin' or current_user.doctor.id == appointment.doctor_id) %}
+                                        <button class="btn btn-xs btn-outline-primary"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#billing-{{ appointment.id }}"
+                                                title="Edit billing">
+                                            <i class="fas fa-file-invoice-dollar"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if current_user.role in ['admin', 'doctor', 'receptionist'] %}
+                                        <button class="btn btn-xs btn-outline-success"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#payment-appt-{{ appointment.id }}"
+                                                title="Record payment">
+                                            <i class="fas fa-hand-holding-usd"></i>
+                                        </button>
+                                        {% endif %}
+                                        </div>
+                                    </td>
+
                                     <td>
                                         {% if appointment.notes %}
                                             <small>{{ appointment.notes[:50] }}{% if appointment.notes|length > 50 %}...{% endif %}</small>
@@ -244,6 +302,110 @@
                                         </div>
                                     </td>
                                 </tr>
+
+                                <!-- ── Billing collapse (doctor/admin) ── -->
+                                {% if current_user.role in ['admin', 'doctor'] and
+                                      (current_user.role == 'admin' or current_user.doctor.id == appointment.doctor_id) %}
+                                <tr class="collapse" id="billing-{{ appointment.id }}">
+                                    <td colspan="9" class="bg-light py-2 px-4">
+                                        <form method="POST"
+                                              action="{{ url_for('appointments.update_billing', appointment_id=appointment.id, status=request.args.get('status',''), date=request.args.get('date',''), priority=request.args.get('priority','')) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <strong class="text-primary"><i class="fas fa-file-invoice-dollar me-1"></i>Billing Details</strong>
+                                            <div class="row g-2 align-items-end mt-1">
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Consultation Fee (₹)</label>
+                                                    <input type="number" name="consultation_fee" class="form-control form-control-sm"
+                                                           placeholder="0.00" min="0" step="0.01"
+                                                           value="{{ appointment.consultation_fee or '' }}">
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Medicine Charges (₹)</label>
+                                                    <input type="number" name="medicine_charges" class="form-control form-control-sm"
+                                                           placeholder="0.00" min="0" step="0.01"
+                                                           value="{{ appointment.medicine_charges or '' }}">
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Discount (₹)</label>
+                                                    <input type="number" name="discount" class="form-control form-control-sm"
+                                                           placeholder="0.00" min="0" step="0.01"
+                                                           value="{{ appointment.discount or '' }}">
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Total Bill</label>
+                                                    <div class="form-control form-control-sm bg-white fw-semibold text-success" id="total-{{ appointment.id }}">
+                                                        ₹{{ "%.2f"|format((appointment.consultation_fee or 0) + (appointment.medicine_charges or 0) - (appointment.discount or 0)) }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 text-end">
+                                                    <button type="submit" class="btn btn-sm btn-primary px-3">
+                                                        <i class="fas fa-save me-1"></i>Save Billing
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#billing-{{ appointment.id }}">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endif %}
+
+                                <!-- ── Payment collection collapse (receptionist/admin/doctor) ── -->
+                                {% if current_user.role in ['admin', 'doctor', 'receptionist'] %}
+                                <tr class="collapse" id="payment-appt-{{ appointment.id }}">
+                                    <td colspan="9" class="bg-light py-2 px-4">
+                                        <form method="POST"
+                                              action="{{ url_for('appointments.update_payment_status', appointment_id=appointment.id, status=request.args.get('status',''), date=request.args.get('date',''), priority=request.args.get('priority','')) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <strong class="text-success"><i class="fas fa-hand-holding-usd me-1"></i>Record Payment</strong>
+                                            <div class="row g-2 align-items-end mt-1">
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Payment Status</label>
+                                                    <select name="payment_status" class="form-select form-select-sm">
+                                                        <option value="unpaid"  {% if appointment.payment_status == 'unpaid'  %}selected{% endif %}>Unpaid</option>
+                                                        <option value="partial" {% if appointment.payment_status == 'partial' %}selected{% endif %}>Partial</option>
+                                                        <option value="paid"    {% if appointment.payment_status == 'paid'    %}selected{% endif %}>Paid</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Amount Received (₹)</label>
+                                                    <input type="number" name="payment_amount" class="form-control form-control-sm"
+                                                           placeholder="0.00" min="0" step="0.01"
+                                                           value="{{ appointment.payment_amount or '' }}">
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <label class="form-label small mb-1">Payment Mode</label>
+                                                    <select name="payment_mode" class="form-select form-select-sm">
+                                                        <option value="">— Select —</option>
+                                                        <option value="cash"   {% if appointment.payment_mode == 'cash'   %}selected{% endif %}>Cash</option>
+                                                        <option value="upi"    {% if appointment.payment_mode == 'upi'    %}selected{% endif %}>UPI</option>
+                                                        <option value="online" {% if appointment.payment_mode == 'online' %}selected{% endif %}>Online / Card</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-3 text-end">
+                                                    <button type="submit" class="btn btn-sm btn-success px-3">
+                                                        <i class="fas fa-save me-1"></i>Save Payment
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#payment-appt-{{ appointment.id }}">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {% if appointment.payment_received_by and appointment.payment_date %}
+                                            <small class="text-muted mt-1 d-block">
+                                                Last recorded {{ appointment.payment_date.strftime('%d %b %Y %I:%M %p') }}
+                                            </small>
+                                            {% endif %}
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endif %}
+
                             {% endfor %}
                         </tbody>
                     </table>
@@ -314,7 +476,23 @@
     </div>
 </div>
 
+<style>
+.btn-xs { padding: 0.15rem 0.4rem; font-size: 0.75rem; }
+</style>
 <script>
+// Live total calculation for each billing collapse panel
+document.addEventListener('input', function(e) {
+    const row = e.target.closest('tr.collapse');
+    if (!row) return;
+    const id = row.id.replace('billing-', '');
+    if (!id) return;
+    const c = parseFloat(row.querySelector('[name=consultation_fee]')?.value) || 0;
+    const m = parseFloat(row.querySelector('[name=medicine_charges]')?.value) || 0;
+    const d = parseFloat(row.querySelector('[name=discount]')?.value) || 0;
+    const totalEl = document.getElementById('total-' + id);
+    if (totalEl) totalEl.textContent = '₹' + (c + m - d).toFixed(2);
+});
+
 function markCompleted(appointmentId) {
     if (confirm('Mark this appointment as completed?')) {
         fetch(`/appointments/${appointmentId}/complete`, {

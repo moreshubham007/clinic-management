@@ -428,6 +428,84 @@ def search_patient():
     } for patient in patients])
 
 
+@appointments_bp.route('/<int:appointment_id>/billing', methods=['POST'])
+@login_required
+def update_billing(appointment_id):
+    """Doctor or Admin can set consultation fee, medicine charges, discount."""
+    if current_user.role not in ['admin', 'doctor']:
+        flash('Only doctors and admins can edit billing details.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    if current_user.role == 'doctor' and appointment.doctor_id != current_user.doctor.id:
+        flash('You can only edit billing for your own appointments.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    def _parse(val):
+        try:
+            v = float(val)
+            return v if v >= 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    appointment.consultation_fee  = _parse(request.form.get('consultation_fee'))
+    appointment.medicine_charges  = _parse(request.form.get('medicine_charges'))
+    appointment.discount          = _parse(request.form.get('discount')) or 0
+    appointment.updated_at        = datetime.utcnow()
+    db.session.commit()
+    flash('Billing details updated.', 'success')
+    return redirect(url_for('appointments.list_appointments',
+                            status=request.args.get('status', ''),
+                            date=request.args.get('date', ''),
+                            priority=request.args.get('priority', '')))
+
+
+@appointments_bp.route('/<int:appointment_id>/payment-status', methods=['POST'])
+@login_required
+def update_payment_status(appointment_id):
+    """Receptionist, Doctor, or Admin can record payment collection."""
+    if current_user.role not in ['admin', 'doctor', 'receptionist']:
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('appointments.list_appointments'))
+
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    payment_status = request.form.get('payment_status', 'unpaid')
+    if payment_status not in ['paid', 'unpaid', 'partial']:
+        payment_status = 'unpaid'
+
+    amount_str  = request.form.get('payment_amount', '').strip()
+    payment_mode = request.form.get('payment_mode', '').strip() or None
+
+    appointment.payment_status = payment_status
+    appointment.payment_mode   = payment_mode
+
+    if amount_str:
+        try:
+            appointment.payment_amount = float(amount_str)
+        except ValueError:
+            flash('Invalid payment amount.', 'danger')
+            return redirect(url_for('appointments.list_appointments'))
+    else:
+        appointment.payment_amount = None
+
+    if payment_status in ['paid', 'partial']:
+        appointment.payment_received_by = current_user.id
+        appointment.payment_date        = datetime.utcnow()
+    else:
+        appointment.payment_received_by = None
+        appointment.payment_date        = None
+
+    appointment.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash('Payment status updated.', 'success')
+    return redirect(url_for('appointments.list_appointments',
+                            status=request.args.get('status', ''),
+                            date=request.args.get('date', ''),
+                            priority=request.args.get('priority', '')))
+
+
 @appointments_bp.route('/<int:appointment_id>/priority', methods=['POST'])
 @login_required
 def update_priority(appointment_id):

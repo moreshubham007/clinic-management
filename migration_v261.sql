@@ -67,7 +67,15 @@ CREATE TABLE IF NOT EXISTS appointment_request (
 ALTER TABLE appointment_request
     MODIFY COLUMN IF EXISTS preferred_time VARCHAR(30) NULL;
 
--- ── 6. Add created_by_id to medicine_order (tracks staff vs public orders) ──
+-- ── 6. Add billing columns to appointment ────────────────────────────────────
+ALTER TABLE appointment
+    ADD COLUMN IF NOT EXISTS consultation_fee  DECIMAL(10,2) NULL AFTER payment_date,
+    ADD COLUMN IF NOT EXISTS medicine_charges  DECIMAL(10,2) NULL AFTER consultation_fee,
+    ADD COLUMN IF NOT EXISTS discount          DECIMAL(10,2) NULL DEFAULT 0 AFTER medicine_charges;
+
+-- Also add 'partial' as valid payment_status (existing rows are fine — VARCHAR allows it)
+
+-- ── 7. Add created_by_id to medicine_order (tracks staff vs public orders) ──
 ALTER TABLE medicine_order
     ADD COLUMN IF NOT EXISTS created_by_id INT NULL AFTER payment_mode;
 

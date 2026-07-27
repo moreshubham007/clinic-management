@@ -73,9 +73,14 @@ class Appointment(db.Model):
     priority = db.Column(db.String(10), default='medium')  # high, medium, low
     notes = db.Column(db.Text)
     remarks = db.Column(db.Text)
-    payment_status = db.Column(db.String(20), default='unpaid')  # paid, unpaid
-    payment_amount = db.Column(db.Float)
-    payment_mode = db.Column(db.String(20))  # cash, online
+    # Billing breakdown (set by doctor/admin)
+    consultation_fee = db.Column(db.Numeric(10, 2), nullable=True)
+    medicine_charges = db.Column(db.Numeric(10, 2), nullable=True)
+    discount = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    # Payment (collected by receptionist/admin/doctor)
+    payment_status = db.Column(db.String(20), default='unpaid')  # paid, unpaid, partial
+    payment_amount = db.Column(db.Float)                          # actual amount received
+    payment_mode = db.Column(db.String(20))                       # cash, upi, online
     payment_received_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     payment_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=lambda: datetime.utcnow())
