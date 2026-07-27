@@ -35,9 +35,11 @@
 .wa-stat.s-prog  .wa-stat-icon { background: #fef9c3; color: #92400e; }
 .wa-stat.s-done  .wa-stat-icon { background: #dcfce7; color: #166534; }
 .wa-stat.s-avg   .wa-stat-icon { background: var(--p100); color: var(--p700); }
+.wa-stat.s-alert .wa-stat-icon { background: #fee2e2; color: #b91c1c; }
 .wa-stat.s-wait  .wa-stat-num  { color: #1d4ed8; }
 .wa-stat.s-prog  .wa-stat-num  { color: #92400e; }
 .wa-stat.s-done  .wa-stat-num  { color: #166534; }
+.wa-stat.s-alert .wa-stat-num  { color: #b91c1c; }
 .wa-stat.s-avg   .wa-stat-num  { color: var(--p700); }
 
 /* ── Kanban board ─────────────────────────────────────── */
@@ -221,6 +223,10 @@
         <div class="wa-stat s-done">
             <div class="wa-stat-icon"><i class="fas fa-clipboard-check"></i></div>
             <div><div class="wa-stat-num" id="statDone">—</div><div class="wa-stat-lbl">Completed</div></div>
+        </div>
+        <div class="wa-stat s-alert">
+            <div class="wa-stat-icon"><i class="fas fa-stopwatch"></i></div>
+            <div><div class="wa-stat-num" id="statLongWaits">—</div><div class="wa-stat-lbl">Long Waits (&gt;1hr)</div></div>
         </div>
         <div class="wa-stat s-avg">
             <div class="wa-stat-icon"><i class="fas fa-clock"></i></div>
@@ -497,7 +503,29 @@ function manualCleanup() {
     });
 }
 
-setInterval(refreshWaitingList, 30000);
-document.addEventListener('DOMContentLoaded', refreshWaitingList);
+function refreshStats() {
+    fetch('/waiting-area/api/waiting-stats')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('statWaiting').textContent   = d.total_waiting;
+            document.getElementById('statProgress').textContent  = d.total_in_progress;
+            document.getElementById('statDone').textContent      = d.total_completed;
+            document.getElementById('statLongWaits').textContent = d.long_waits;
+            document.getElementById('statAvg').textContent       = d.average_wait_time;
+
+            // Flash alert if long waits > 0
+            const alert = document.getElementById('longWaitAlert');
+            if (d.long_waits > 0) {
+                alert.style.removeProperty('display');
+                alert.classList.remove('d-none');
+            } else {
+                alert.classList.add('d-none');
+            }
+        })
+        .catch(() => {});
+}
+
+setInterval(() => { refreshWaitingList(); refreshStats(); }, 30000);
+document.addEventListener('DOMContentLoaded', () => { refreshWaitingList(); refreshStats(); });
 </script>
 {% endblock %}
