@@ -148,7 +148,7 @@
                         </div>
 
                         <!-- Range date inputs -->
-                        <div id="modeRange" class="d-flex align-items-center gap-1">
+                        <div id="modeRange" style="display:none;align-items:center;gap:.35rem;">
                             <input type="date" class="form-control form-control-sm"
                                    id="range_from" style="width:148px;" placeholder="From">
                             <span class="text-muted fw-semibold px-1">→</span>
@@ -708,13 +708,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function applyMode(mode) {
         if (mode === 'single') {
-            modeSingle.style.display = '';
+            modeSingle.style.display = 'block';
             modeRange.style.display  = 'none';
             btnSingle.className = 'btn btn-xs btn-primary';
             btnRange.className  = 'btn btn-xs btn-outline-secondary';
         } else {
             modeSingle.style.display = 'none';
-            modeRange.style.display  = '';
+            modeRange.style.display  = 'flex';
             btnSingle.className = 'btn btn-xs btn-outline-secondary';
             btnRange.className  = 'btn btn-xs btn-primary';
         }
