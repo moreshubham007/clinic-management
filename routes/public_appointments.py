@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, AppointmentRequest
@@ -32,6 +32,20 @@ def scanner_landing():
 @public_appt_bp.route('/')
 def book_landing():
     return render_template('public/book.html')
+
+
+# ── Public: confirmation page (PRG pattern — GET only) ────────────────────────
+@public_appt_bp.route('/confirmed')
+def book_confirmed():
+    ref = session.pop('appt_ref', None)
+    patient_name = session.pop('appt_patient_name', None)
+    if not ref:
+        # Guard: if someone lands here directly without a submission, redirect home
+        return redirect(url_for('public_appt.book_landing'))
+    return render_template('public/book.html',
+                           submitted=True,
+                           ref=ref,
+                           patient_name=patient_name)
 
 
 # ── Public: new patient request ──────────────────────────────────────────────
@@ -74,10 +88,9 @@ def book_new_patient():
         req.request_number = _generate_request_number(req.id)
         db.session.commit()
 
-        return render_template('public/book.html',
-                               submitted=True,
-                               ref=req.request_number,
-                               patient_name=name)
+        session['appt_ref'] = req.request_number
+        session['appt_patient_name'] = name
+        return redirect(url_for('public_appt.book_confirmed'))
 
     return render_template('public/book_new.html')
 
@@ -143,10 +156,9 @@ def book_existing_patient():
             req.request_number = _generate_request_number(req.id)
             db.session.commit()
 
-            return render_template('public/book.html',
-                                   submitted=True,
-                                   ref=req.request_number,
-                                   patient_name=p.name if p else 'Patient')
+            session['appt_ref'] = req.request_number
+            session['appt_patient_name'] = p.name if p else 'Patient'
+            return redirect(url_for('public_appt.book_confirmed'))
 
     return render_template('public/book_existing.html',
                            patient=None,
